@@ -1,0 +1,64 @@
+/* ============================================
+   DATABASE — PostgreSQL Connection & Pool
+   ============================================ */
+require('dotenv').config();
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'forgefit',
+});
+
+pool.on('error', (err) => {
+  console.error('❌ Unexpected PostgreSQL error:', err);
+});
+
+/**
+ * Initialize database tables.
+ */
+async function initDB() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS workouts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS routines (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS custom_exercises (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        muscles TEXT[] NOT NULL DEFAULT '{}',
+        equipment TEXT DEFAULT 'Bodyweight',
+        difficulty INTEGER DEFAULT 2,
+        type TEXT DEFAULT 'compound',
+        description TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS workout_logs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Database tables ready');
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { pool, initDB };
