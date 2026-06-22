@@ -8,7 +8,7 @@ ForgeFit is a modern, high-performance web application designed to help users ge
 
 ## ✨ Key Features
 
-*   **🧠 Gemini AI Workout Generator**: Generates customized training sessions matching your target muscle groups, available equipment, and duration targets. It enforces **strict JSON response schemas** from the Gemini 1.5 Flash model and includes a fail-safe procedural fallback.
+*   **🧠 Gemini AI Workout/Routine Generator**: Generates customized training sessions matching your target muscle groups, available equipment, and duration targets. It enforces **strict JSON response schemas** from the Gemini 2.5 Flash model and includes a fail-safe procedural fallback.
 *   **⚡ Traditional Rules Engine**: Generates workouts instantly client-side by choosing exercise types, compound movements first, and difficulty volume (sets/reps/rest).
 *   **📅 Weekly Routine Builder**: Generates multi-day weekly plans based on goals (Hypertrophy, Strength, Endurance) and split schedules (PPL, Upper/Lower, Arnold Split, Full Body, Bro Split).
 *   **⏱️ Active Workout Tracker**: Interactive dashboard with a stopwatch, rest countdowns, and set-by-set weight and rep logging.
