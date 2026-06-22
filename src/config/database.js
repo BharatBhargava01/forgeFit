@@ -4,12 +4,23 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const useConnectionString = connectionString && !connectionString.includes('YOUR_PASSWORD_HERE');
+const isLocalhost = useConnectionString && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'));
+
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'forgefit',
+  ...(useConnectionString
+    ? {
+        connectionString,
+        ssl: isLocalhost ? false : { rejectUnauthorized: false },
+      }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        database: process.env.DB_NAME || 'forgefit',
+      }),
 });
 
 pool.on('error', (err) => {
