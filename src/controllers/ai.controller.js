@@ -98,9 +98,9 @@ exports.generateAIWorkout = async (req, res) => {
       4. Set realistic rest times (e.g. 90-120s for compounds, 60s for isolation).
     `;
 
-    // Retrieve the model (Gemini 1.5 Flash is ideal for structured text generation)
+    // Retrieve the model (Gemini 2.5 Flash Lite is ideal for structured text generation)
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: workoutResponseSchema,

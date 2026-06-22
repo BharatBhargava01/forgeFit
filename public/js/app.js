@@ -5,7 +5,7 @@
 import { MUSCLE_GROUPS, EQUIPMENT, EXERCISES, filterExercises, getExerciseCount, setCustomExercisesCache } from './data.js';
 import { generateWorkout } from './generator.js';
 import { generateRoutine, getSplitOptions } from './routine.js';
-import { saveWorkout, getWorkouts, deleteWorkout, saveRoutine, getRoutines, deleteRoutine, saveCustomExercise, getCustomExercises, deleteCustomExercise, saveWorkoutLog, getWorkoutLogs, deleteWorkoutLog } from './storage.js';
+import { saveWorkout, getWorkouts, deleteWorkout, saveRoutine, getRoutines, deleteRoutine, saveCustomExercise, getCustomExercises, deleteCustomExercise, saveWorkoutLog, getWorkoutLogs, deleteWorkoutLog, syncOfflineData } from './storage.js';
 import { $, $$, createElement, showToast, difficultyInfo, formatDate, renderSkeletons, animateIn } from './ui.js';
 
 /* ---- Refresh custom exercises cache from API ---- */
@@ -15,6 +15,30 @@ async function refreshCustomExercises() {
     setCustomExercisesCache(exercises);
   } catch { /* silent */ }
 }
+
+/* ---- Handle offline data synchronization ---- */
+async function handleSyncOffline() {
+  try {
+    const didSync = await syncOfflineData();
+    if (didSync) {
+      showToast('Synced offline data with server!', 'success');
+      
+      // Update local memory cache with newly synced custom exercises
+      await refreshCustomExercises();
+      
+      // Refresh current page UI to show synced items
+      if (state.currentPage === 'saved') {
+        renderSaved();
+        renderHistory();
+      } else if (state.currentPage === 'create') {
+        renderCustomExerciseList();
+      }
+    }
+  } catch (err) {
+    console.error('Offline synchronization error:', err);
+  }
+}
+
 
 /* ---- State ---- */
 const state = {
@@ -1641,6 +1665,21 @@ async function renderHistory() {
 async function init() {
   // Load custom exercises cache from API on startup
   await refreshCustomExercises();
+
+  // Sync offline data if online
+  if (navigator.onLine) {
+    await handleSyncOffline();
+  }
+
+  // Listen for online/offline events
+  window.addEventListener('online', () => {
+    showToast('You are back online!', 'success');
+    handleSyncOffline();
+  });
+
+  window.addEventListener('offline', () => {
+    showToast('Connection lost. Working offline.', 'info');
+  });
 
   // Nav links
   $$('.navbar__link').forEach(link => {

@@ -166,3 +166,65 @@ export async function deleteWorkoutLog(id) {
     writeLocal('wg_workout_logs', logs);
   }
 }
+
+/* --- Synchronization --- */
+
+async function syncCollection(key, url) {
+  const localItems = readLocal(key);
+  if (!localItems.length) return false;
+
+  console.log(`[Sync] Syncing ${localItems.length} items for ${key}...`);
+  const failedToSync = [];
+  let successCount = 0;
+
+  for (const item of localItems) {
+    try {
+      const payload = { ...item };
+      // Delete temporary client-only fields to avoid polluting DB JSONB payload
+      delete payload.id;
+      delete payload.savedAt;
+      delete payload.loggedAt;
+      delete payload.createdAt;
+      delete payload.isCustom;
+
+      await apiRequest(url, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      successCount++;
+    } catch (err) {
+      console.error(`[Sync] Failed to sync item from ${key}:`, err);
+      failedToSync.push(item);
+    }
+  }
+
+  // Update local storage with whatever failed (clears synced items)
+  writeLocal(key, failedToSync);
+
+  return successCount > 0;
+}
+
+export async function syncOfflineData() {
+  if (!navigator.onLine) return false;
+
+  console.log('[Sync] Starting offline data synchronization...');
+
+  try {
+    const results = await Promise.all([
+      syncCollection('wg_custom_exercises', '/exercises/custom'),
+      syncCollection('wg_saved_workouts', '/workouts'),
+      syncCollection('wg_saved_routines', '/routines'),
+      syncCollection('wg_workout_logs', '/logs'),
+    ]);
+
+    const anySynced = results.some(r => r === true);
+    if (anySynced) {
+      console.log('[Sync] Synchronization complete!');
+    }
+    return anySynced;
+  } catch (err) {
+    console.error('[Sync] Sync failed:', err);
+    return false;
+  }
+}
+
