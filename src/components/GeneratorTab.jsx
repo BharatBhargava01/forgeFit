@@ -236,21 +236,24 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
             </div>
 
             {/* AI Toggle */}
-            <div className="flex items-center justify-between py-3 border-t border-white/5">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+            <div className="flex items-center justify-between py-4 border-t border-white/5">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-white flex items-center gap-2">
                   Use AI Generator 🧠
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-accent-purple/10 text-accent-purple border border-accent-purple/20 tracking-wider">
+                    Gemini AI
+                  </span>
                 </span>
-                <span className="text-xs text-text-muted">Generates a unique workout with Gemini</span>
+                <span className="text-xs text-text-secondary">Generates a unique workout with Gemini</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex items-center cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={useAI}
                   onChange={(e) => setUseAI(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:height-5 after:width-5 after:transition-all peer-checked:bg-accent-purple"></div>
+                <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
               </label>
             </div>
 
