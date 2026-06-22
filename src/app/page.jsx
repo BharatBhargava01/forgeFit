@@ -47,7 +47,10 @@ export default function MainPage() {
     // Register Service Worker for PWA offline capabilities
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('[Service Worker] Registered with scope:', reg.scope))
+        .then(reg => {
+          console.log('[Service Worker] Registered with scope:', reg.scope);
+          reg.update();
+        })
         .catch(err => console.error('[Service Worker] Registration failed:', err));
     }
 
