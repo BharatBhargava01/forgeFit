@@ -61,4 +61,9 @@ async function initDB() {
   }
 }
 
+// Automatically trigger database initialization on module load
+initDB().catch((err) => {
+  console.error('❌ Failed to auto-initialize database tables on startup:', err.message);
+});
+
 module.exports = { pool, initDB };

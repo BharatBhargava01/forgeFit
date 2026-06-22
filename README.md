@@ -1,6 +1,6 @@
 # 🔥 ForgeFit — AI Workout & Routine Generator
 
-ForgeFit is a modern, high-performance web application designed to help users generate, log, and track personalized workout sessions and weekly training routines. It features a fast procedural rules-engine, an advanced **Google Gemini AI generator**, interactive workout tracking, detailed analytics, and full **Progressive Web App (PWA)** capabilities.
+ForgeFit is a modern, high-performance web application designed to help users generate, log, and track personalized workout sessions and weekly training routines. It is built as a unified Next.js application, styled with Tailwind CSS, utilizing a fast procedural rules-engine, an advanced **Google Gemini AI generator**, interactive workout tracking, detailed analytics, and full **Progressive Web App (PWA)** capabilities.
 
 ---
 
@@ -11,18 +11,18 @@ ForgeFit is a modern, high-performance web application designed to help users ge
 *   **📅 Weekly Routine Builder**: Generates multi-day weekly plans based on goals (Hypertrophy, Strength, Endurance) and split schedules (PPL, Upper/Lower, Arnold Split, Full Body, Bro Split).
 *   **⏱️ Active Workout Tracker**: Interactive dashboard with a stopwatch, rest countdowns, and set-by-set weight and rep logging.
 *   **📊 Consistency & Volume Analytics**: Visualizes training stats through SVG volume trend charts, muscle distribution progress bars, consistency calendars, and milestone badges.
-*   **📱 Progressive Web App (PWA)**: Installable directly to iOS, Android, and Desktop with offline caching for core assets and Google Fonts.
-*   **💾 Resilient Data Layer**: Backed by PostgreSQL with a client-side `localStorage` fallback layer that keeps the app fully functional offline.
+*   **📱 Progressive Web App (PWA)**: Installable directly to iOS, Android, and Desktop with offline caching for core assets, Google Fonts, and Next.js static chunks.
+*   **💾 Resilient Data Layer**: Backed by PostgreSQL with automatic database table initialization on startup and a client-side `localStorage` fallback layer that keeps the app fully functional offline.
 
 ---
 
 ## 🛠️ Technology Stack
 
-*   **Frontend**: Vanilla HTML5, CSS3 Custom Properties (variables, components, pages layouts), and modular JavaScript.
-*   **Backend**: Node.js, Express, PG (PostgreSQL client), CORS.
-*   **AI Integration**: `@google/generative-ai` SDK.
-*   **PWA**: Web App Manifest (`manifest.json`), Service Workers (static & dynamic caching).
-*   **Database**: PostgreSQL.
+*   **Framework**: Next.js (App Router)
+*   **Frontend**: React 19, Tailwind CSS v4, Lucide Icons
+*   **AI Integration**: `@google/generative-ai` SDK (Gemini 2.5 Flash / 1.5 Flash)
+*   **PWA**: Web App Manifest (`manifest.json`), Service Workers (custom static & dynamic GET-only caching)
+*   **Database**: PostgreSQL (`pg` pool)
 
 ---
 
@@ -30,11 +30,11 @@ ForgeFit is a modern, high-performance web application designed to help users ge
 
 ```mermaid
 graph TD
-  A[Frontend UI / PWA] -->|Service Worker Cache| A
-  A -->|POST /api/workouts/ai-generate| B[Express server]
+  A[Frontend UI / PWA Shell] -->|Service Worker Cache| A
+  A -->|Fetch /api/*| B[Next.js App Router Route Handlers]
   B --> C[Gemini AI Controller]
   C -->|Schema Enforcements| D[Google Gemini API]
-  B --> E[PostgreSQL DB]
+  B --> E[PostgreSQL Database]
   A -->|Fallback: LocalStorage| A
 ```
 
@@ -44,7 +44,7 @@ graph TD
 
 ### 1. Prerequisites
 Ensure you have the following installed:
-*   [Node.js](https://nodejs.org/) (v16 or higher)
+*   [Node.js](https://nodejs.org/) (v18 or higher)
 *   [PostgreSQL](https://www.postgresql.org/)
 
 ### 2. Installation
@@ -57,7 +57,7 @@ npm install
 
 ### 3. Database Configuration
 1. Start your local PostgreSQL server.
-2. Initialize the database schema and pre-populated exercise library:
+2. The application automatically initializes tables on the first database query. Alternatively, you can run the initialization script manually:
    ```bash
    npm run db:init
    ```
@@ -73,19 +73,22 @@ DB_USER=postgres
 DB_PASSWORD=your_postgres_password
 DB_NAME=forgefit
 
-# Server Configuration
-PORT=3000
-
-# Google Gemini AI (Optional)
+# Google Gemini AI
 GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 ```
 
 ### 5. Running the Application
-Start the development server with Nodemon:
+Start the Next.js development server:
 ```bash
 npm run dev
 ```
 Open `http://localhost:3000` in your browser.
+
+To run the production build:
+```bash
+npm run build
+npm run start
+```
 
 ---
 
@@ -96,7 +99,7 @@ ForgeFit is fully installable:
 *   **iOS**: Open the app in Safari, tap **Share**, and select **Add to Home Screen**.
 *   **Android**: Open in Chrome, tap the menu, and select **Install App**.
 
-When offline, the Service Worker serves the application shell, and `storage.js` redirects database operations to `localStorage` until the server is reachable again.
+When offline, the Service Worker serves the application shell, and dynamic code redirects database operations to `localStorage` until the server is reachable again, at which point it automatically syncs with the database.
 
 ---
 
