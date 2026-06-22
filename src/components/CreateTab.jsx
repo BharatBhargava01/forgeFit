@@ -348,7 +348,7 @@ export default function CreateTab({ showToast, refreshCache }) {
                     className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple cursor-pointer text-xs"
                   >
                     {EQUIPMENT.map(eq => (
-                      <option key={eq} value={eq}>{eq}</option>
+                      <option key={eq} value={eq} className="bg-[#12121a] text-white">{eq}</option>
                     ))}
                   </select>
                 </div>
@@ -364,9 +364,9 @@ export default function CreateTab({ showToast, refreshCache }) {
                     onChange={(e) => setExerciseDifficulty(parseInt(e.target.value))}
                     className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple cursor-pointer text-xs"
                   >
-                    <option value="1">Easy (Beginner)</option>
-                    <option value="2">Medium (Intermediate)</option>
-                    <option value="3">Hard (Advanced)</option>
+                    <option value="1" className="bg-[#12121a] text-white">Easy (Beginner)</option>
+                    <option value="2" className="bg-[#12121a] text-white">Medium (Intermediate)</option>
+                    <option value="3" className="bg-[#12121a] text-white">Hard (Advanced)</option>
                   </select>
                 </div>
 
@@ -381,8 +381,8 @@ export default function CreateTab({ showToast, refreshCache }) {
                     onChange={(e) => setExerciseType(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple cursor-pointer text-xs"
                   >
-                    <option value="compound">Compound</option>
-                    <option value="isolation">Isolation</option>
+                    <option value="compound" className="bg-[#12121a] text-white">Compound</option>
+                    <option value="isolation" className="bg-[#12121a] text-white">Isolation</option>
                   </select>
                 </div>
               </div>

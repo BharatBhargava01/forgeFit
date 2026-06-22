@@ -8,6 +8,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
   const [splitType, setSplitType] = useState('push-pull-legs');
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [splitList, setSplitList] = useState([]);
+  const [useAI, setUseAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [routineResult, setRoutineResult] = useState(null);
   const [expandedDays, setExpandedDays] = useState({});
@@ -40,16 +41,38 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
     }
   };
 
-  const handleBuild = () => {
+  const handleBuild = async () => {
     setLoading(true);
     setRoutineResult(null);
     setExpandedDays({});
 
-    setTimeout(() => {
-      const res = generateRoutine({ goal, daysPerWeek, splitType });
-      setRoutineResult(res);
-      setLoading(false);
-    }, 800);
+    if (useAI) {
+      try {
+        const res = await fetch('/api/routines/ai-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ goal, splitType, daysPerWeek })
+        });
+        if (!res.ok) throw new Error(`Status: ${res.status}`);
+        
+        const data = await res.json();
+        setRoutineResult(data);
+        showToast('AI weekly routine generated! 🧠', 'success');
+      } catch (err) {
+        console.warn('AI routine generation failed, falling back to rule-based engine:', err);
+        showToast('AI Generation failed. Falling back to traditional rules.', 'error');
+        const fallback = generateRoutine({ goal, daysPerWeek, splitType });
+        setRoutineResult(fallback);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setTimeout(() => {
+        const res = generateRoutine({ goal, daysPerWeek, splitType });
+        setRoutineResult(res);
+        setLoading(false);
+      }, 800);
+    }
   };
 
   const handleSave = async () => {
@@ -98,9 +121,9 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
               onChange={(e) => setGoal(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer"
             >
-              <option value="hypertrophy">Hypertrophy (Muscle Growth)</option>
-              <option value="strength">Strength (Max Power)</option>
-              <option value="endurance">Endurance (Stamina)</option>
+              <option value="hypertrophy" className="bg-[#12121a] text-white">Hypertrophy (Muscle Growth)</option>
+              <option value="strength" className="bg-[#12121a] text-white">Strength (Max Power)</option>
+              <option value="endurance" className="bg-[#12121a] text-white">Endurance (Stamina)</option>
             </select>
           </div>
 
@@ -116,7 +139,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer"
             >
               {splitList.map(s => (
-                <option key={s.key} value={s.key}>{s.name}</option>
+                <option key={s.key} value={s.key} className="bg-[#12121a] text-white">{s.name}</option>
               ))}
             </select>
           </div>
@@ -133,14 +156,36 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer"
             >
               {currentSplit?.dayOptions.map(d => (
-                <option key={d} value={d}>{d} Days</option>
+                <option key={d} value={d} className="bg-[#12121a] text-white">{d} Days</option>
               ))}
             </select>
           </div>
         </div>
 
+        {/* AI Toggle */}
+        <div className="flex items-center justify-between py-4 mt-6 border-t border-white/5">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-bold text-white flex items-center gap-2">
+              Use AI Generator 🧠
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-accent-purple/10 text-accent-purple border border-accent-purple/20 tracking-wider">
+                Gemini AI
+              </span>
+            </span>
+            <span className="text-xs text-text-secondary">Generates a custom weekly routine with Gemini</span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={useAI}
+              onChange={(e) => setUseAI(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+
         {/* Build Action */}
-        <div className="mt-6 flex justify-end">
+        <div className="mt-4 flex justify-end">
           <button
             onClick={handleBuild}
             className="w-full md:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 font-bold text-white shadow-lg shadow-accent-purple/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -232,7 +277,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
                       </div>
                       <div className="flex items-center gap-1.5 text-text-secondary">
                         <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/5 text-text-muted">
-                          {day.exercises.length} ex
+                          {day.exercises?.length || 0} ex
                         </span>
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </div>
@@ -249,7 +294,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
                           ))}
                         </div>
                         <div className="space-y-2">
-                          {day.exercises.map((ex, exIdx) => (
+                          {day.exercises?.map((ex, exIdx) => (
                             <div key={ex.id || exIdx} className="flex justify-between items-center py-2 px-3 rounded-lg bg-white/2 border border-white/5 text-xs text-text-secondary">
                               <div className="flex items-center gap-2">
                                 <Dumbbell className="w-3.5 h-3.5 text-accent-indigo" />
