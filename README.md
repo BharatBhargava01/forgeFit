@@ -1,5 +1,7 @@
 # 🔥 ForgeFit — AI Workout & Routine Generator
 
+🚀 **Live Demo**: [https://forge-fit-beryl.vercel.app](https://forge-fit-beryl.vercel.app)
+
 ForgeFit is a modern, high-performance web application designed to help users generate, log, and track personalized workout sessions and weekly training routines. It is built as a unified Next.js application, styled with Tailwind CSS, utilizing a fast procedural rules-engine, an advanced **Google Gemini AI generator**, interactive workout tracking, detailed analytics, and full **Progressive Web App (PWA)** capabilities.
 
 ---
