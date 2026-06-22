@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
+    <html lang="en" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#0a0a0f" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="ForgeFit" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="bg-[#0a0a0f] text-[#ededed] antialiased min-h-screen selection:bg-orange-500 selection:text-white font-sans">
+      <body className="bg-[#0a0a0f] text-[#ededed] antialiased min-h-screen selection:bg-orange-500 selection:text-white font-sans" suppressHydrationWarning>
         {children}
       </body>
     </html>
