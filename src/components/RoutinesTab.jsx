@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X } from 'lucide-react';
 import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
+import { getAllExercises } from '@/lib/data';
 
 export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill }) {
   const [goal, setGoal] = useState('hypertrophy');
@@ -12,6 +13,84 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
   const [loading, setLoading] = useState(false);
   const [routineResult, setRoutineResult] = useState(null);
   const [expandedDays, setExpandedDays] = useState({});
+
+  // Edit, delete, swap states for routines
+  const [swapDayIndex, setSwapDayIndex] = useState(null);
+  const [swapExIdx, setSwapExIdx] = useState(null);
+  const [swapSearch, setSwapSearch] = useState('');
+
+  const handleUpdateRoutineExerciseField = (dayIndex, exIdx, field, value) => {
+    setRoutineResult(prev => {
+      const updatedWeek = prev.week.map(day => {
+        if (day.dayIndex === dayIndex) {
+          const updatedExercises = day.exercises.map((ex, i) => 
+            i === exIdx ? { ...ex, [field]: value } : ex
+          );
+          return { ...day, exercises: updatedExercises };
+        }
+        return day;
+      });
+      return { ...prev, week: updatedWeek };
+    });
+  };
+
+  const handleDeleteRoutineExercise = (dayIndex, exIdx) => {
+    if (!confirm('Are you sure you want to remove this exercise from this routine day?')) return;
+    setRoutineResult(prev => {
+      const updatedWeek = prev.week.map(day => {
+        if (day.dayIndex === dayIndex) {
+          return {
+            ...day,
+            exercises: day.exercises.filter((_, i) => i !== exIdx)
+          };
+        }
+        return day;
+      });
+      return { ...prev, week: updatedWeek };
+    });
+  };
+
+  const handleSwapRoutineExercise = (dayIndex, exIdx, newExercise) => {
+    setRoutineResult(prev => {
+      const updatedWeek = prev.week.map(day => {
+        if (day.dayIndex === dayIndex) {
+          const updatedExercises = [...day.exercises];
+          const oldEx = updatedExercises[exIdx];
+          updatedExercises[exIdx] = {
+            ...newExercise,
+            sets: oldEx.sets || 3,
+            reps: oldEx.reps || 10,
+            rest: oldEx.rest || 60,
+          };
+          return { ...day, exercises: updatedExercises };
+        }
+        return day;
+      });
+      return { ...prev, week: updatedWeek };
+    });
+    setSwapDayIndex(null);
+    setSwapExIdx(null);
+    setSwapSearch('');
+    showToast(`Swapped for ${newExercise.name}! 🔄`, 'success');
+  };
+
+  const swapAlternatives = useMemo(() => {
+    if (swapDayIndex === null || swapExIdx === null || !routineResult) return [];
+    const day = routineResult.week.find(d => d.dayIndex === swapDayIndex);
+    if (!day) return [];
+    const exToSwap = day.exercises[swapExIdx];
+    if (!exToSwap) return [];
+    const allEx = getAllExercises();
+    return allEx.filter(e => {
+      const sharesMuscle = e.muscles.some(m => exToSwap.muscles.includes(m));
+      const isDifferent = e.id !== exToSwap.id && e.name !== exToSwap.name;
+      const matchesSearch = swapSearch 
+        ? e.name.toLowerCase().includes(swapSearch.toLowerCase()) || 
+          e.muscles.some(m => m.toLowerCase().includes(swapSearch.toLowerCase()))
+        : true;
+      return sharesMuscle && isDifferent && matchesSearch;
+    });
+  }, [swapDayIndex, swapExIdx, routineResult, swapSearch]);
 
   useEffect(() => {
     if (prefilledRoutine) {
@@ -29,16 +108,11 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
     if (options.length > 0) {
       const defaultSplit = options.find(s => s.key === 'push-pull-legs') || options[0];
       setSplitType(defaultSplit.key);
-      setDaysPerWeek(defaultSplit.dayOptions[0]);
     }
   }, []);
 
   const handleSplitChange = (key) => {
     setSplitType(key);
-    const selected = splitList.find(s => s.key === key);
-    if (selected) {
-      setDaysPerWeek(selected.dayOptions[0]);
-    }
   };
 
   const handleBuild = async () => {
@@ -124,6 +198,10 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
               <option value="hypertrophy" className="bg-[#12121a] text-white">Hypertrophy (Muscle Growth)</option>
               <option value="strength" className="bg-[#12121a] text-white">Strength (Max Power)</option>
               <option value="endurance" className="bg-[#12121a] text-white">Endurance (Stamina)</option>
+              <option value="fat-loss" className="bg-[#12121a] text-white">Fat Loss (Definition)</option>
+              <option value="powerlifting" className="bg-[#12121a] text-white">Powerlifting (Max Strength)</option>
+              <option value="cardio-conditioning" className="bg-[#12121a] text-white">Cardio / Conditioning</option>
+              <option value="mobility-flexibility" className="bg-[#12121a] text-white">Mobility / Flexibility</option>
             </select>
           </div>
 
@@ -153,10 +231,10 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
               id="routine-days"
               value={daysPerWeek}
               onChange={(e) => setDaysPerWeek(parseInt(e.target.value))}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer"
             >
-              {currentSplit?.dayOptions.map(d => (
-                <option key={d} value={d} className="bg-[#12121a] text-white">{d} Days</option>
+              {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                <option key={d} value={d} className="bg-[#12121a] text-white">{d} {d === 1 ? 'Day' : 'Days'}</option>
               ))}
             </select>
           </div>
@@ -295,16 +373,70 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
                         </div>
                         <div className="space-y-2">
                           {day.exercises?.map((ex, exIdx) => (
-                            <div key={ex.id || exIdx} className="flex justify-between items-center py-2 px-3 rounded-lg bg-white/2 border border-white/5 text-xs text-text-secondary">
+                            <div key={ex.id || exIdx} className="flex flex-col sm:flex-row justify-between sm:items-center py-2.5 px-3 rounded-lg bg-white/2 border border-white/5 text-xs text-text-secondary gap-3">
                               <div className="flex items-center gap-2">
-                                <Dumbbell className="w-3.5 h-3.5 text-accent-indigo" />
-                                <span className="font-bold text-white">{ex.name}</span>
+                                <Dumbbell className="w-3.5 h-3.5 text-accent-indigo shrink-0" />
+                                <span className="font-bold text-white text-left">{ex.name}</span>
                               </div>
-                              <div className="flex items-center gap-4 font-heading font-bold text-white shrink-0">
-                                <span>{ex.sets}s × {ex.reps}r</span>
-                                <span className="text-[10px] text-text-muted font-normal bg-white/5 px-1.5 py-0.5 rounded">
-                                  Rest {ex.rest}s
-                                </span>
+                              
+                              <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">
+                                {/* Inputs for sets, reps, rest */}
+                                <div className="flex gap-2 items-center">
+                                  <div className="flex items-center gap-0.5">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={ex.sets}
+                                      onChange={(e) => handleUpdateRoutineExerciseField(day.dayIndex, exIdx, 'sets', parseInt(e.target.value) || 1)}
+                                      className="w-8 text-center bg-black/40 border border-white/10 rounded py-0.5 text-[11px] text-white font-bold"
+                                      title="Sets"
+                                    />
+                                    <span className="text-[9px] text-text-muted">s</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-0.5 border-l border-white/5 pl-2">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={ex.reps}
+                                      onChange={(e) => handleUpdateRoutineExerciseField(day.dayIndex, exIdx, 'reps', parseInt(e.target.value) || 1)}
+                                      className="w-8 text-center bg-black/40 border border-white/10 rounded py-0.5 text-[11px] text-white font-bold"
+                                      title="Reps"
+                                    />
+                                    <span className="text-[9px] text-text-muted">r</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-0.5 border-l border-white/5 pl-2">
+                                    <input
+                                      type="number"
+                                      min="10"
+                                      step="5"
+                                      value={ex.rest}
+                                      onChange={(e) => handleUpdateRoutineExerciseField(day.dayIndex, exIdx, 'rest', parseInt(e.target.value) || 30)}
+                                      className="w-10 text-center bg-black/40 border border-white/10 rounded py-0.5 text-[11px] text-white font-bold"
+                                      title="Rest (seconds)"
+                                    />
+                                    <span className="text-[9px] text-text-muted">s</span>
+                                  </div>
+                                </div>
+
+                                {/* Swap and delete buttons */}
+                                <div className="flex items-center gap-1 border-l border-white/5 pl-2">
+                                  <button
+                                    onClick={() => { setSwapDayIndex(day.dayIndex); setSwapExIdx(exIdx); }}
+                                    className="p-1 rounded hover:bg-accent-indigo/10 text-text-secondary hover:text-accent-indigo cursor-pointer"
+                                    title="Swap Exercise"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteRoutineExercise(day.dayIndex, exIdx)}
+                                    className="p-1 rounded hover:bg-accent-rose/10 text-text-secondary hover:text-accent-rose cursor-pointer"
+                                    title="Delete Exercise"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -333,6 +465,75 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
           </div>
         )}
       </div>
+
+      {/* ROUTINE SWAP ALTERNATIVES MODAL */}
+      {swapDayIndex !== null && swapExIdx !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg glass-card border border-white/10 bg-[#12121a] rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up flex flex-col max-h-[85vh]">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+              <div>
+                <h4 className="font-heading font-extrabold text-lg text-white">Swap Routine Exercise</h4>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Select an alternative exercise targeting {routineResult.week.find(d => d.dayIndex === swapDayIndex)?.exercises[swapExIdx]?.muscles.join(', ')}
+                </p>
+              </div>
+              <button
+                onClick={() => { setSwapDayIndex(null); setSwapExIdx(null); setSwapSearch(''); }}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Box */}
+            <input
+              type="text"
+              placeholder="Search alternative exercises..."
+              value={swapSearch}
+              onChange={(e) => setSwapSearch(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+            />
+
+            {/* Alternatives List */}
+            <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {swapAlternatives.length > 0 ? (
+                swapAlternatives.map((alt) => (
+                  <div
+                    key={alt.id}
+                    onClick={() => handleSwapRoutineExercise(swapDayIndex, swapExIdx, alt)}
+                    className="p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all cursor-pointer flex justify-between items-center gap-4 group text-left"
+                  >
+                    <div>
+                      <span className="font-bold text-white text-sm block group-hover:text-accent-cyan transition-colors">
+                        {alt.name}
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {alt.muscles.map(m => (
+                          <span key={m} className="px-1 py-0.2 rounded bg-white/5 text-[9px] text-text-secondary border border-white/5">
+                            {m}
+                          </span>
+                        ))}
+                        <span className="text-[9px] text-text-muted">· {alt.equipment} · {alt.type}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-accent-indigo opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider shrink-0">
+                      Swap 🔄
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-xs text-text-muted">
+                  No alternative exercises found.
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

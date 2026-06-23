@@ -20,7 +20,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
   // Initialize tracker exercises
   useEffect(() => {
     if (workout && workout.exercises) {
-      const formatted = workout.exercises.map(ex => {
+      const formatted = workout.exercises.map((ex, idx) => {
         // Create initial sets
         const setsArray = [];
         const count = ex.sets || 3;
@@ -33,7 +33,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
           });
         }
         return {
-          id: ex.id,
+          id: ex.id ? `${ex.id}-${idx}` : `ex-${idx}`,
           name: ex.name,
           muscles: ex.muscles,
           equipment: ex.equipment,
@@ -218,7 +218,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     <div className="max-w-4xl mx-auto px-4 py-8 animate-slide-up relative">
       
       {/* Timer & Dashboard Banner */}
-      <div className="glass-card rounded-2xl p-6 mb-6 shadow-xl flex items-center justify-between border border-white/10 bg-gradient-to-r from-[#12121a] to-[#1a1a2e] sticky top-16 z-40">
+      <div className="glass-card rounded-2xl p-6 mb-6 shadow-xl flex items-center justify-between border border-white/10 bg-gradient-to-r from-[#12121a] to-[#1a1a2e]">
         <div>
           <span className="text-xs text-text-muted font-bold tracking-wider uppercase">Active Session</span>
           <h3 className="font-heading font-extrabold text-2xl text-white mt-1">

@@ -104,7 +104,11 @@ export async function POST(request) {
     const goalLabels = {
       strength: "Strength (focused on low reps, heavy compound movements, longer rest, higher sets)",
       hypertrophy: "Hypertrophy (focused on moderate reps, balanced compound/isolation, moderate rest)",
-      endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)"
+      endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)",
+      'fat-loss': "Fat Loss (focused on higher reps, shorter rest times, high-density circuits)",
+      powerlifting: "Powerlifting (focused on very low reps, high sets, maximum compound lifting, very long rest)",
+      'cardio-conditioning': "Cardio/Conditioning (focused on high-intensity exercises, very high reps, minimal rest)",
+      'mobility-flexibility': "Mobility/Flexibility (focused on functional range of motion, stretching, controlled contractions, moderate rest)"
     };
     const goalText = goalLabels[goal] || goalLabels.hypertrophy;
 

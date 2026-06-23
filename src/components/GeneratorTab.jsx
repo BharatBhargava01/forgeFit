@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Brain, Play, Save, RotateCcw, Check, Flame } from 'lucide-react';
-import { MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X } from 'lucide-react';
+import { getAllExercises, MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
 import { generateWorkout } from '@/lib/generator';
 import { saveWorkout } from '@/lib/storage';
 
@@ -12,6 +12,83 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
   const [useAI, setUseAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [workoutResult, setWorkoutResult] = useState(null);
+  const [goal, setGoal] = useState('hypertrophy');
+
+  // Swap and edit state variables
+  const [swapIndex, setSwapIndex] = useState(null);
+  const [swapSearch, setSwapSearch] = useState('');
+
+  // Duration recalculation helper
+  const recalculateDuration = (exercises) => {
+    const estimatedTime = exercises.reduce((acc, ex) => {
+      const setDuration = ((ex.reps || 10) * 3 + (ex.rest || 60)) * (ex.sets || 3);
+      return acc + setDuration;
+    }, 0);
+    return Math.round(estimatedTime / 60);
+  };
+
+  const handleUpdateExerciseField = (index, field, value) => {
+    setWorkoutResult(prev => {
+      const updatedExercises = prev.exercises.map((ex, i) => 
+        i === index ? { ...ex, [field]: value } : ex
+      );
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        estimatedMinutes: recalculateDuration(updatedExercises)
+      };
+    });
+  };
+
+  const handleDeleteExercise = (index) => {
+    if (!confirm('Are you sure you want to remove this exercise from the workout?')) return;
+    setWorkoutResult(prev => {
+      const updatedExercises = prev.exercises.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        totalExercises: updatedExercises.length,
+        estimatedMinutes: recalculateDuration(updatedExercises)
+      };
+    });
+  };
+
+  const handleSwapExercise = (index, newExercise) => {
+    setWorkoutResult(prev => {
+      const updatedExercises = [...prev.exercises];
+      const oldEx = updatedExercises[index];
+      updatedExercises[index] = {
+        ...newExercise,
+        sets: oldEx.sets || 3,
+        reps: oldEx.reps || 10,
+        rest: oldEx.rest || 60,
+      };
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        estimatedMinutes: recalculateDuration(updatedExercises)
+      };
+    });
+    setSwapIndex(null);
+    setSwapSearch('');
+    showToast(`Swapped for ${newExercise.name}! 🔄`, 'success');
+  };
+
+  const swapAlternatives = useMemo(() => {
+    if (swapIndex === null || !workoutResult) return [];
+    const exToSwap = workoutResult.exercises[swapIndex];
+    if (!exToSwap) return [];
+    const allEx = getAllExercises();
+    return allEx.filter(e => {
+      const sharesMuscle = e.muscles.some(m => exToSwap.muscles.includes(m));
+      const isDifferent = e.id !== exToSwap.id && e.name !== exToSwap.name;
+      const matchesSearch = swapSearch 
+        ? e.name.toLowerCase().includes(swapSearch.toLowerCase()) || 
+          e.muscles.some(m => m.toLowerCase().includes(swapSearch.toLowerCase()))
+        : true;
+      return sharesMuscle && isDifferent && matchesSearch;
+    });
+  }, [swapIndex, workoutResult, swapSearch]);
 
   useEffect(() => {
     if (prefilledWorkout) {
@@ -19,6 +96,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
       setSelectedMuscles(prefilledWorkout.muscles || []);
       setDuration(prefilledWorkout.duration || 30);
       setDifficulty(prefilledWorkout.difficulty || 2);
+      setGoal(prefilledWorkout.goal || 'hypertrophy');
       if (clearPrefill) clearPrefill();
     }
   }, [prefilledWorkout]);
@@ -59,6 +137,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
       difficulty,
       duration,
       equipment: selectedEquipment,
+      goal,
     };
 
     if (useAI) {
@@ -157,6 +236,26 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                   );
                 })}
               </div>
+            </div>
+
+            {/* Training Goal */}
+            <div className="space-y-3">
+              <span className="text-sm font-semibold tracking-wider uppercase text-text-muted">
+                Training Goal
+              </span>
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+              >
+                <option value="hypertrophy" className="bg-[#12121a] text-white">Hypertrophy (Muscle Growth)</option>
+                <option value="strength" className="bg-[#12121a] text-white">Strength (Max Power)</option>
+                <option value="endurance" className="bg-[#12121a] text-white">Endurance (Stamina)</option>
+                <option value="fat-loss" className="bg-[#12121a] text-white">Fat Loss (Definition)</option>
+                <option value="powerlifting" className="bg-[#12121a] text-white">Powerlifting (Max Strength)</option>
+                <option value="cardio-conditioning" className="bg-[#12121a] text-white">Cardio / Conditioning</option>
+                <option value="mobility-flexibility" className="bg-[#12121a] text-white">Mobility / Flexibility</option>
+              </select>
             </div>
 
             {/* Duration */}
@@ -333,7 +432,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
               <div className="space-y-3">
                 {workoutResult.exercises.map((ex, i) => (
                   <div
-                    key={i}
+                    key={ex.id || i}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-white/3 border border-white/5 gap-4 hover:border-white/10 transition-colors"
                   >
                     <div className="flex items-start gap-3">
@@ -360,29 +459,142 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                       </div>
                     </div>
                     
-                    {/* Prescriptions */}
-                    <div className="flex items-center gap-4 sm:text-right w-full sm:w-auto justify-end sm:justify-start border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0 shrink-0">
-                      <div className="flex gap-4">
-                        <div className="flex flex-col items-center sm:items-end">
-                          <span className="font-heading font-extrabold text-white text-lg">{ex.sets}</span>
-                          <span className="text-[10px] text-text-muted uppercase tracking-wider">Sets</span>
+                    {/* Prescriptions & Actions */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-between sm:justify-start border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 shrink-0">
+                      
+                      {/* Prescriptions Inputs */}
+                      <div className="flex gap-3 justify-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Sets</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={ex.sets}
+                            onChange={(e) => handleUpdateExerciseField(i, 'sets', parseInt(e.target.value) || 1)}
+                            className="w-11 text-center bg-black/40 border border-white/10 focus:border-accent-purple rounded px-1.5 py-1 text-white font-heading font-black text-sm outline-none transition-colors"
+                          />
                         </div>
-                        <div className="flex flex-col items-center sm:items-end">
-                          <span className="font-heading font-extrabold text-white text-lg">{ex.reps}</span>
-                          <span className="text-[10px] text-text-muted uppercase tracking-wider">Reps</span>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Reps</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={ex.reps}
+                            onChange={(e) => handleUpdateExerciseField(i, 'reps', parseInt(e.target.value) || 1)}
+                            className="w-11 text-center bg-black/40 border border-white/10 focus:border-accent-purple rounded px-1.5 py-1 text-white font-heading font-black text-sm outline-none transition-colors"
+                          />
                         </div>
-                        <div className="flex flex-col items-center sm:items-end">
-                          <span className="font-heading font-extrabold text-white text-lg">{ex.rest}s</span>
-                          <span className="text-[10px] text-text-muted uppercase tracking-wider">Rest</span>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Rest</span>
+                          <div className="flex items-center bg-black/40 border border-white/10 focus-within:border-accent-purple rounded px-1.5 py-1 transition-colors">
+                            <input
+                              type="number"
+                              min="10"
+                              step="5"
+                              value={ex.rest}
+                              onChange={(e) => handleUpdateExerciseField(i, 'rest', parseInt(e.target.value) || 30)}
+                              className="w-11 text-center bg-transparent border-none text-white font-heading font-black text-sm outline-none"
+                            />
+                            <span className="text-[10px] text-text-muted ml-0.5">s</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="pl-2 border-l border-white/5">
+
+                      {/* Swap and Delete Buttons */}
+                      <div className="flex items-center gap-1.5 border-l border-white/5 pl-3 self-stretch sm:self-auto justify-end">
+                        <button
+                          onClick={() => setSwapIndex(i)}
+                          className="p-2 rounded-lg bg-white/5 text-text-secondary hover:bg-accent-indigo/10 hover:text-accent-indigo border border-white/5 transition-all cursor-pointer"
+                          title="Swap Exercise"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExercise(i)}
+                          className="p-2 rounded-lg bg-white/5 text-text-secondary hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-all cursor-pointer"
+                          title="Delete Exercise"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="pl-2 border-l border-white/5 hidden sm:block">
                         {getDifficultyBadge(ex.difficulty)}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {/* SWAP ALTERNATIVES MODAL */}
+              {swapIndex !== null && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                  <div className="w-full max-w-lg glass-card border border-white/10 bg-[#12121a] rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up flex flex-col max-h-[85vh]">
+                    
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                      <div>
+                        <h4 className="font-heading font-extrabold text-lg text-white">Swap Exercise</h4>
+                        <p className="text-xs text-text-secondary mt-0.5">
+                          Select an alternative exercise targeting {workoutResult.exercises[swapIndex]?.muscles.join(', ')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { setSwapIndex(null); setSwapSearch(''); }}
+                        className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Search Box */}
+                    <input
+                      type="text"
+                      placeholder="Search alternative exercises..."
+                      value={swapSearch}
+                      onChange={(e) => setSwapSearch(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+                    />
+
+                    {/* Alternatives List */}
+                    <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                      {swapAlternatives.length > 0 ? (
+                        swapAlternatives.map((alt) => (
+                          <div
+                            key={alt.id}
+                            onClick={() => handleSwapExercise(swapIndex, alt)}
+                            className="p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all cursor-pointer flex justify-between items-center gap-4 group text-left"
+                          >
+                            <div>
+                              <span className="font-bold text-white text-sm block group-hover:text-accent-cyan transition-colors">
+                                {alt.name}
+                              </span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {alt.muscles.map(m => (
+                                  <span key={m} className="px-1 py-0.2 rounded bg-white/5 text-[9px] text-text-secondary border border-white/5">
+                                    {m}
+                                  </span>
+                                ))}
+                                <span className="text-[9px] text-text-muted">· {alt.equipment} · {alt.type}</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-accent-indigo opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider shrink-0">
+                              Swap 🔄
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-xs text-text-muted">
+                          No alternative exercises found.
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Empty State */

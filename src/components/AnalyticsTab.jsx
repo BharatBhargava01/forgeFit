@@ -65,7 +65,7 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
             });
           }
 
-          if (ex.sets) {
+          if (Array.isArray(ex.sets)) {
             ex.sets.forEach(set => {
               if (set.completed) {
                 logVolume += (set.weight || 0) * (set.reps || 0);
@@ -97,7 +97,7 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
       let vol = 0;
       if (log.exercises) {
         log.exercises.forEach(ex => {
-          if (ex.sets) {
+          if (Array.isArray(ex.sets)) {
             ex.sets.forEach(s => {
               if (s.completed) vol += (s.weight || 0) * (s.reps || 0);
             });

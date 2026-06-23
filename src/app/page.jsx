@@ -16,6 +16,7 @@ import { getCustomExercises, syncOfflineData } from '@/lib/storage';
 export default function MainPage() {
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWorkout, setActiveWorkout] = useState(null);
+  const [motivationEnabled, setMotivationEnabled] = useState(false);
   
   // Custom caches / selections to prefill tabs
   const [prefilledWorkout, setPrefilledWorkout] = useState(null);
@@ -33,6 +34,101 @@ export default function MainPage() {
     }, 3000);
   };
 
+  const checkDailyMotivation = () => {
+    if (typeof window === 'undefined') return;
+    
+    const optedIn = localStorage.getItem('wg_motivation_enabled') === 'true';
+    if (!optedIn) return;
+
+    const lastDate = localStorage.getItem('wg_last_motivation_date');
+    const today = new Date().toDateString();
+
+    if (lastDate !== today) {
+      const quotes = [
+        "No pain, no gain. Shut up and train! ⚡",
+        "The only bad workout is the one that didn't happen. 🏋️‍♂️",
+        "Your body can stand almost anything. Convince your mind! 🧠",
+        "Success isn't always about greatness. It's about consistency. 🎯",
+        "Dream extreme. Train insane. Obtain the gain. 💪",
+        "You don't have to be extreme, just consistent. 🔥",
+        "Action is the foundational key to all success. 🚀",
+        "Energy flows where attention goes. Focus on your strength! 🌟",
+        "Don't limit your challenges. Challenge your limits. 🏔️",
+        "Strength comes from an indomitable will! 🦁",
+        "What hurts today makes you stronger tomorrow. 🌅",
+        "Remember why you started. Push harder today! ⚡",
+        "Your future self will thank you for the work you put in today. 🏆"
+      ];
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+      showToast(randomQuote, 'info');
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification("ForgeFit Motivation ⚡", {
+            body: randomQuote,
+            icon: '/icon-192.png'
+          });
+        } catch (e) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification("ForgeFit Motivation ⚡", {
+                body: randomQuote,
+                icon: '/icon-192.png'
+              });
+            });
+          }
+        }
+      }
+
+      localStorage.setItem('wg_last_motivation_date', today);
+    }
+  };
+
+  const handleToggleMotivation = async () => {
+    if (typeof window === 'undefined') return;
+
+    if (!('Notification' in window)) {
+      showToast('System notifications are not supported in this browser.', 'error');
+      return;
+    }
+
+    if (motivationEnabled) {
+      localStorage.setItem('wg_motivation_enabled', 'false');
+      setMotivationEnabled(false);
+      showToast('Daily motivational reminders disabled.', 'info');
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        localStorage.setItem('wg_motivation_enabled', 'true');
+        setMotivationEnabled(true);
+        showToast('Daily notifications enabled! 🔔', 'success');
+        
+        try {
+          new Notification("ForgeFit Motivation ⚡", {
+            body: "Welcome to ForgeFit Daily Reminders! Let's crush your goals today! 🏋️‍♂️",
+            icon: '/icon-192.png'
+          });
+        } catch (e) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification("ForgeFit Motivation ⚡", {
+                body: "Welcome to ForgeFit Daily Reminders! Let's crush your goals today! 🏋️‍♂️",
+                icon: '/icon-192.png'
+              });
+            });
+          }
+        }
+
+        setTimeout(() => {
+          checkDailyMotivation();
+        }, 1500);
+      } else {
+        showToast('Notification permission was denied. Enable it in your settings.', 'error');
+      }
+    }
+  };
+
   const refreshCustomExercises = async () => {
     try {
       const data = await getCustomExercises();
@@ -43,6 +139,16 @@ export default function MainPage() {
   // On Mount: Load custom exercises, set up offline sync listener, register Service Worker
   useEffect(() => {
     refreshCustomExercises();
+
+    if (typeof window !== 'undefined') {
+      const isEnabled = localStorage.getItem('wg_motivation_enabled') === 'true';
+      setMotivationEnabled(isEnabled);
+      if (isEnabled) {
+        setTimeout(() => {
+          checkDailyMotivation();
+        }, 2000);
+      }
+    }
 
     // Register Service Worker for PWA offline capabilities
     if ('serviceWorker' in navigator) {
@@ -73,7 +179,16 @@ export default function MainPage() {
       handleSync();
     }
 
-    return () => window.removeEventListener('online', handleSync);
+    const interval = setInterval(() => {
+      if (localStorage.getItem('wg_motivation_enabled') === 'true') {
+        checkDailyMotivation();
+      }
+    }, 1800000); // Check every 30 mins
+
+    return () => {
+      window.removeEventListener('online', handleSync);
+      clearInterval(interval);
+    };
   }, []);
 
   // Handle active workout tracking redirection
@@ -190,6 +305,31 @@ export default function MainPage() {
                   </div>
                 </div>
 
+                {/* Daily Motivation Setup */}
+                <div className="max-w-xl mx-auto w-full glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex items-center justify-between gap-6 hover:border-white/10 transition-colors animate-fade-in">
+                  <div className="flex gap-4 items-center">
+                    <div className="w-12 h-12 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-2xl shrink-0">
+                      🔔
+                    </div>
+                    <div className="text-left">
+                      <h4 className="font-heading font-bold text-white text-sm">Daily Motivation Boost</h4>
+                      <p className="text-xs text-text-secondary mt-0.5 leading-normal">
+                        Receive a daily dose of fitness motivation directly to your screen.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={motivationEnabled}
+                      onChange={handleToggleMotivation}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                  </label>
+                </div>
+
                 {/* Features Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto pt-8">
                   
@@ -282,7 +422,12 @@ export default function MainPage() {
             )}
 
             {currentPage === 'library' && (
-              <LibraryTab />
+              <LibraryTab
+                onStartWorkout={handleStartWorkout}
+                onInspectWorkout={handleInspectWorkout}
+                onInspectRoutine={handleInspectRoutine}
+                showToast={showToast}
+              />
             )}
 
             {currentPage === 'create' && (

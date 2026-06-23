@@ -214,12 +214,14 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
               let totalWeight = 0;
               let completedSets = 0;
               log.exercises?.forEach(ex => {
-                ex.sets?.forEach(s => {
-                  if (s.completed) {
-                    completedSets++;
-                    totalWeight += (s.weight || 0) * (s.reps || 0);
-                  }
-                });
+                if (Array.isArray(ex.sets)) {
+                  ex.sets.forEach(s => {
+                    if (s.completed) {
+                      completedSets++;
+                      totalWeight += (s.weight || 0) * (s.reps || 0);
+                    }
+                  });
+                }
               });
 
               return (
@@ -279,7 +281,7 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
                         <div key={exIdx} className="space-y-1.5">
                           <span className="font-bold text-white text-xs block">{ex.name}</span>
                           <div className="flex flex-wrap gap-1.5">
-                            {ex.sets?.map((set, sIdx) => (
+                            {Array.isArray(ex.sets) && ex.sets.map((set, sIdx) => (
                               <span
                                 key={sIdx}
                                 className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${

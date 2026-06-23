@@ -88,3 +88,22 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
+// Handle notification clicks (especially on mobile PWAs)
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Focus existing window client if open
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new window at the root
+      if (self.clients.openWindow) {
+        return self.clients.openWindow('/');
+      }
+    })
+  );
+});
