@@ -107,3 +107,68 @@ self.addEventListener('notificationclick', event => {
     })
   );
 });
+
+// Periodic background sync logic for motivation checks
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'motivation-check') {
+    event.waitUntil(checkMotivationInServiceWorker());
+  }
+});
+
+async function checkMotivationInServiceWorker() {
+  try {
+    const cache = await caches.open('forgefit-settings-cache');
+    const response = await cache.match('/offline-settings.json');
+    if (!response) return;
+
+    const settings = await response.json();
+    if (!settings.enabled) return;
+
+    const todayStr = new Date().toDateString();
+    const currentHour = new Date().getHours();
+
+    // Check if we should notify at this hour
+    const hours = settings.hours || [8, 12, 15, 18, 21];
+    if (!hours.includes(currentHour)) return;
+
+    // Check if we already notified for this hour today in the SW cache
+    const lastKeyResponse = await cache.match('/last-notification-hour.json');
+    const currentKey = `${todayStr}:${currentHour}`;
+    if (lastKeyResponse) {
+      const lastKeyData = await lastKeyResponse.json();
+      if (lastKeyData.key === currentKey) return;
+    }
+
+    // Pick a random quote
+    const quotes = [
+      "No pain, no gain. Shut up and train! ⚡",
+      "The only bad workout is the one that didn't happen. 🏋️‍♂️",
+      "Your body can stand almost anything. Convince your mind! 🧠",
+      "Success isn't always about greatness. It's about consistency. 🎯",
+      "Dream extreme. Train insane. Obtain the gain. 💪",
+      "You don't have to be extreme, just consistent. 🔥",
+      "Action is the foundational key to all success. 🚀",
+      "Energy flows where attention goes. Focus on your strength! 🌟",
+      "Don't limit your challenges. Challenge your limits. 🏔️",
+      "Strength comes from an indomitable will! 🦁",
+      "What hurts today makes you stronger tomorrow. 🌅",
+      "Remember why you started. Push harder today! ⚡",
+      "Your future self will thank you for the work you put in today. 🏆"
+    ];
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+    // Trigger local push notification
+    await self.registration.showNotification("ForgeFit Motivation ⚡", {
+      body: randomQuote,
+      icon: '/icon-192.png'
+    });
+
+    // Save the notification hour key to cache to prevent duplicates
+    await cache.put(
+      new Request('/last-notification-hour.json'),
+      new Response(JSON.stringify({ key: currentKey }))
+    );
+  } catch (e) {
+    console.error('[SW Motivation Check] Error:', e);
+  }
+}

@@ -35,6 +35,19 @@ export default function MainPage() {
     }, 3000);
   };
 
+  const syncSettingsToCache = async (enabled, hours) => {
+    if (typeof window === 'undefined' || !('caches' in window)) return;
+    try {
+      const cache = await caches.open('forgefit-settings-cache');
+      await cache.put(
+        new Request('/offline-settings.json'),
+        new Response(JSON.stringify({ enabled, hours }))
+      );
+    } catch (e) {
+      console.warn('[Cache Sync] Failed to cache settings:', e);
+    }
+  };
+
   const checkDailyMotivation = () => {
     if (typeof window === 'undefined') return;
     
@@ -123,6 +136,7 @@ export default function MainPage() {
         updated = [...prev, hour].sort((a, b) => a - b);
       }
       localStorage.setItem('wg_motivation_hours', JSON.stringify(updated));
+      syncSettingsToCache(motivationEnabled, updated);
       return updated;
     });
   };
@@ -139,12 +153,14 @@ export default function MainPage() {
       localStorage.setItem('wg_motivation_enabled', 'false');
       setMotivationEnabled(false);
       showToast('Daily motivational reminders disabled.', 'info');
+      await syncSettingsToCache(false, motivationHours);
     } else {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         localStorage.setItem('wg_motivation_enabled', 'true');
         setMotivationEnabled(true);
         showToast('Daily notifications enabled! 🔔', 'success');
+        await syncSettingsToCache(true, motivationHours);
         
         try {
           new Notification("ForgeFit Motivation ⚡", {
@@ -186,12 +202,17 @@ export default function MainPage() {
       const isEnabled = localStorage.getItem('wg_motivation_enabled') === 'true';
       setMotivationEnabled(isEnabled);
 
+      let activeHours = [8, 12, 15, 18, 21];
       const savedHours = localStorage.getItem('wg_motivation_hours');
       if (savedHours) {
         try {
-          setMotivationHours(JSON.parse(savedHours));
+          activeHours = JSON.parse(savedHours);
+          setMotivationHours(activeHours);
         } catch (e) { /* fallback */ }
       }
+
+      // Sync settings to cache on mount
+      syncSettingsToCache(isEnabled, activeHours);
 
       if (isEnabled) {
         setTimeout(() => {
@@ -206,6 +227,23 @@ export default function MainPage() {
         .then(reg => {
           console.log('[Service Worker] Registered with scope:', reg.scope);
           reg.update();
+
+          // Register periodic sync for PWA background motivation checking
+          if ('periodicSync' in reg) {
+            navigator.permissions.query({
+              name: 'periodic-background-sync',
+            }).then(status => {
+              if (status.state === 'granted') {
+                reg.periodicSync.register('motivation-check', {
+                  minInterval: 60 * 60 * 1000, // hourly interval
+                }).then(() => {
+                  console.log('[Periodic Sync] Registered motivation-check successfully');
+                }).catch(err => {
+                  console.warn('[Periodic Sync] Registration failed:', err);
+                });
+              }
+            });
+          }
         })
         .catch(err => console.error('[Service Worker] Registration failed:', err));
     }
