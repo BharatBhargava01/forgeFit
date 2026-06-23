@@ -17,6 +17,7 @@ export default function MainPage() {
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [motivationEnabled, setMotivationEnabled] = useState(false);
+  const [motivationHours, setMotivationHours] = useState([8, 12, 15, 18, 21]);
   
   // Custom caches / selections to prefill tabs
   const [prefilledWorkout, setPrefilledWorkout] = useState(null);
@@ -40,10 +41,33 @@ export default function MainPage() {
     const optedIn = localStorage.getItem('wg_motivation_enabled') === 'true';
     if (!optedIn) return;
 
-    const lastDate = localStorage.getItem('wg_last_motivation_date');
-    const today = new Date().toDateString();
+    let hours = [8, 12, 15, 18, 21];
+    const savedHours = localStorage.getItem('wg_motivation_hours');
+    if (savedHours) {
+      try {
+        hours = JSON.parse(savedHours);
+      } catch (e) { /* fallback */ }
+    }
 
-    if (lastDate !== today) {
+    const todayStr = new Date().toDateString();
+    const currentHour = new Date().getHours();
+
+    const lastDate = localStorage.getItem('wg_last_motivation_date');
+    const lastHourKey = localStorage.getItem('wg_last_motivation_hour_key');
+    const currentHourKey = `${todayStr}:${currentHour}`;
+
+    let shouldNotify = false;
+
+    // 1. If it's a scheduled hour and we haven't notified for this hour today
+    if (hours.includes(currentHour) && lastHourKey !== currentHourKey) {
+      shouldNotify = true;
+    }
+    // 2. Fallback: If we haven't notified at all today
+    else if (lastDate !== todayStr) {
+      shouldNotify = true;
+    }
+
+    if (shouldNotify) {
       const quotes = [
         "No pain, no gain. Shut up and train! ⚡",
         "The only bad workout is the one that didn't happen. 🏋️‍♂️",
@@ -81,8 +105,26 @@ export default function MainPage() {
         }
       }
 
-      localStorage.setItem('wg_last_motivation_date', today);
+      localStorage.setItem('wg_last_motivation_date', todayStr);
+      localStorage.setItem('wg_last_motivation_hour_key', currentHourKey);
     }
+  };
+
+  const handleToggleHour = (hour) => {
+    setMotivationHours(prev => {
+      let updated;
+      if (prev.includes(hour)) {
+        if (prev.length <= 1) {
+          showToast('Please keep at least one notification hour selected.', 'error');
+          return prev;
+        }
+        updated = prev.filter(h => h !== hour);
+      } else {
+        updated = [...prev, hour].sort((a, b) => a - b);
+      }
+      localStorage.setItem('wg_motivation_hours', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleToggleMotivation = async () => {
@@ -143,6 +185,14 @@ export default function MainPage() {
     if (typeof window !== 'undefined') {
       const isEnabled = localStorage.getItem('wg_motivation_enabled') === 'true';
       setMotivationEnabled(isEnabled);
+
+      const savedHours = localStorage.getItem('wg_motivation_hours');
+      if (savedHours) {
+        try {
+          setMotivationHours(JSON.parse(savedHours));
+        } catch (e) { /* fallback */ }
+      }
+
       if (isEnabled) {
         setTimeout(() => {
           checkDailyMotivation();
@@ -183,7 +233,7 @@ export default function MainPage() {
       if (localStorage.getItem('wg_motivation_enabled') === 'true') {
         checkDailyMotivation();
       }
-    }, 1800000); // Check every 30 mins
+    }, 300000); // Check every 5 mins
 
     return () => {
       window.removeEventListener('online', handleSync);
@@ -306,28 +356,63 @@ export default function MainPage() {
                 </div>
 
                 {/* Daily Motivation Setup */}
-                <div className="max-w-xl mx-auto w-full glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex items-center justify-between gap-6 hover:border-white/10 transition-colors animate-fade-in">
-                  <div className="flex gap-4 items-center">
-                    <div className="w-12 h-12 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-2xl shrink-0">
-                      🔔
+                <div className="max-w-xl mx-auto w-full glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col gap-4 hover:border-white/10 transition-colors animate-fade-in">
+                  <div className="flex items-center justify-between gap-6">
+                    <div className="flex gap-4 items-center">
+                      <div className="w-12 h-12 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-2xl shrink-0">
+                        🔔
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-heading font-bold text-white text-sm">Motivational Reminders</h4>
+                        <p className="text-xs text-text-secondary mt-0.5 leading-normal">
+                          Get multiple reminders throughout the day to stay active.
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h4 className="font-heading font-bold text-white text-sm">Daily Motivation Boost</h4>
-                      <p className="text-xs text-text-secondary mt-0.5 leading-normal">
-                        Receive a daily dose of fitness motivation directly to your screen.
-                      </p>
-                    </div>
+                    
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={motivationEnabled}
+                        onChange={handleToggleMotivation}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                    </label>
                   </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={motivationEnabled}
-                      onChange={handleToggleMotivation}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
-                  </label>
+
+                  {motivationEnabled && (
+                    <div className="border-t border-white/5 pt-4 animate-slide-up space-y-3">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left">
+                        Trigger Times
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { hour: 8, label: '8 AM', icon: '🌅' },
+                          { hour: 12, label: '12 PM', icon: '☀️' },
+                          { hour: 15, label: '3 PM', icon: '☕' },
+                          { hour: 18, label: '6 PM', icon: '🌆' },
+                          { hour: 21, label: '9 PM', icon: '🌙' }
+                        ].map(({ hour, label, icon }) => {
+                          const active = motivationHours.includes(hour);
+                          return (
+                            <button
+                              key={hour}
+                              onClick={() => handleToggleHour(hour)}
+                              className={`py-2 px-1 rounded-xl text-[11px] font-semibold border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                                active
+                                  ? 'bg-accent-purple/20 border-accent-purple text-white shadow-md'
+                                  : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span className="text-sm">{icon}</span>
+                              <span>{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Features Cards */}
