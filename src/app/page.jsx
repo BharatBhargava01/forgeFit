@@ -12,8 +12,11 @@ import AnalyticsTab from '@/components/AnalyticsTab';
 import SavedTab from '@/components/SavedTab';
 import { setCustomExercisesCache } from '@/lib/data';
 import { getCustomExercises, syncOfflineData } from '@/lib/storage';
+import AuthModal from '@/components/AuthModal';
 
 export default function MainPage() {
+  const [user, setUser] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [motivationEnabled, setMotivationEnabled] = useState(false);
@@ -33,6 +36,104 @@ export default function MainPage() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
+  };
+
+  // Load user session and check URL params
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          localStorage.setItem('wg_user', JSON.stringify(data));
+        } else if (res.status === 401) {
+          // If explicitly unauthorized, clear cached user
+          setUser(null);
+          localStorage.removeItem('wg_user');
+        }
+      } catch (err) {
+        console.warn('Session check failed:', err);
+        // Offline fallback: try to load cached user details
+        const cachedUser = localStorage.getItem('wg_user');
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch (e) {
+            localStorage.removeItem('wg_user');
+          }
+        }
+      }
+    }
+    
+    checkSession();
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('login_success')) {
+        showToast('Successfully signed in! 🚀', 'success');
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        // Clear old caches for clean user login
+        clearUserCaches();
+        checkSession();
+      } else if (urlParams.has('error')) {
+        const errType = urlParams.get('error');
+        if (errType === 'google_not_configured') {
+          showToast('Google login is not configured in .env. Please check credentials.', 'error');
+        } else {
+          showToast('Authentication failed. Please try again.', 'error');
+        }
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, []);
+
+  const clearUserCaches = () => {
+    localStorage.removeItem('wg_workouts_cache');
+    localStorage.removeItem('wg_routines_cache');
+    localStorage.removeItem('wg_custom_exercises_cache');
+    localStorage.removeItem('wg_workout_logs_cache');
+    localStorage.removeItem('wg_deleted_workouts');
+    localStorage.removeItem('wg_deleted_routines');
+    localStorage.removeItem('wg_deleted_exercises');
+    localStorage.removeItem('wg_deleted_logs');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        setUser(null);
+        localStorage.removeItem('wg_user');
+        clearUserCaches();
+        showToast('Signed out successfully. Using offline local storage. 👋', 'info');
+      } else {
+        showToast('Failed to sign out. Please try again.', 'error');
+      }
+    } catch (err) {
+      showToast('Error signing out', 'error');
+    }
+  };
+
+  const handleSyncData = async () => {
+    if (!user) {
+      showToast('Please sign in to sync your data to the cloud.', 'error');
+      return;
+    }
+    showToast('Syncing your local data to the database...', 'info');
+    try {
+      const didSync = await syncOfflineData();
+      if (didSync) {
+        showToast('Offline data synced with database successfully! 🔌', 'success');
+        refreshCustomExercises();
+      } else {
+        showToast('All local data is already up to date with the server.', 'info');
+      }
+    } catch (err) {
+      showToast('Failed to sync offline data. Try again later.', 'error');
+    }
   };
 
   const syncSettingsToCache = async (enabled, hours) => {
@@ -223,25 +324,30 @@ export default function MainPage() {
 
     // Register Service Worker for PWA offline capabilities
     if ('serviceWorker' in navigator) {
+      // Listen for version updates from Service Worker
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'VERSION_UPDATE') {
+          showToast('App successfully updated to the latest version! 🚀', 'info');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
+      });
+
       navigator.serviceWorker.register('/sw.js')
         .then(reg => {
           console.log('[Service Worker] Registered with scope:', reg.scope);
           reg.update();
 
-          // Register periodic sync for PWA background motivation checking
+          // Register periodic sync for PWA background motivation checking directly
           if ('periodicSync' in reg) {
-            navigator.permissions.query({
-              name: 'periodic-background-sync',
-            }).then(status => {
-              if (status.state === 'granted') {
-                reg.periodicSync.register('motivation-check', {
-                  minInterval: 60 * 60 * 1000, // hourly interval
-                }).then(() => {
-                  console.log('[Periodic Sync] Registered motivation-check successfully');
-                }).catch(err => {
-                  console.warn('[Periodic Sync] Registration failed:', err);
-                });
-              }
+            reg.periodicSync.register('motivation-check', {
+              minInterval: 60 * 60 * 1000, // hourly interval
+            }).then(() => {
+              console.log('[Periodic Sync] Registered motivation-check successfully');
+            }).catch(err => {
+              // Gracefully handle browser restrictions (e.g. app not installed yet)
+              console.log('[Periodic Sync] Background sync registration deferred:', err.message);
             });
           }
         })
@@ -319,7 +425,14 @@ export default function MainPage() {
     <div className="flex flex-col min-h-screen">
       
       {/* Navigation Bar */}
-      <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Navbar 
+        currentPage={currentPage} 
+        onNavigate={setCurrentPage} 
+        user={user}
+        onSignInClick={() => setAuthModalOpen(true)}
+        onSignOutClick={handleSignOut}
+        onSyncClick={handleSyncData}
+      />
 
       {/* Main Content Area */}
       <main className="flex-grow">
@@ -526,6 +639,7 @@ export default function MainPage() {
 
             {currentPage === 'generator' && (
               <GeneratorTab
+                key={user ? user.id : 'guest'}
                 onStartWorkout={handleStartWorkout}
                 showToast={showToast}
                 // Inspect variables
@@ -538,6 +652,7 @@ export default function MainPage() {
 
             {currentPage === 'routine' && (
               <RoutinesTab
+                key={user ? user.id : 'guest'}
                 showToast={showToast}
                 prefilledRoutine={prefilledRoutine}
                 clearPrefill={() => setPrefilledRoutine(null)}
@@ -546,6 +661,7 @@ export default function MainPage() {
 
             {currentPage === 'library' && (
               <LibraryTab
+                key={user ? user.id : 'guest'}
                 onStartWorkout={handleStartWorkout}
                 onInspectWorkout={handleInspectWorkout}
                 onInspectRoutine={handleInspectRoutine}
@@ -555,6 +671,7 @@ export default function MainPage() {
 
             {currentPage === 'create' && (
               <CreateTab
+                key={user ? user.id : 'guest'}
                 showToast={showToast}
                 refreshCache={refreshCustomExercises}
               />
@@ -562,6 +679,7 @@ export default function MainPage() {
 
             {currentPage === 'analytics' && (
               <AnalyticsTab
+                key={user ? user.id : 'guest'}
                 onPrefillGenerator={handlePrefillMuscles}
                 showToast={showToast}
               />
@@ -569,6 +687,7 @@ export default function MainPage() {
 
             {currentPage === 'saved' && (
               <SavedTab
+                key={user ? user.id : 'guest'}
                 onStartWorkout={handleStartWorkout}
                 onInspectWorkout={handleInspectWorkout}
                 onInspectRoutine={handleInspectRoutine}
@@ -600,6 +719,22 @@ export default function MainPage() {
           );
         })}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={(userData) => {
+          clearUserCaches();
+          setUser(userData);
+          localStorage.setItem('wg_user', JSON.stringify(userData));
+          // Auto-trigger sync on sign in to upload offline data
+          setTimeout(() => {
+            handleSyncData();
+          }, 500);
+        }}
+        showToast={showToast}
+      />
 
     </div>
   );

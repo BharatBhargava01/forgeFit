@@ -2,8 +2,11 @@ const { pool } = require('../config/database');
 const { nanoid } = require('../utils/id');
 
 class ExercisesModel {
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM custom_exercises ORDER BY created_at DESC');
+  static async findAll(userId) {
+    const result = await pool.query(
+      'SELECT * FROM custom_exercises WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
     return result.rows.map(row => ({
       id: row.id,
       name: row.name,
@@ -18,12 +21,12 @@ class ExercisesModel {
     }));
   }
 
-  static async create(name, data) {
+  static async create(name, data, userId) {
     const id = nanoid();
     await pool.query(
       `INSERT INTO custom_exercises 
-       (id, name, muscles, equipment, difficulty, type, description) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (id, name, muscles, equipment, difficulty, type, description, user_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         id, 
         name, 
@@ -31,7 +34,8 @@ class ExercisesModel {
         data.equipment || 'Bodyweight', 
         data.difficulty || 2, 
         data.type || 'compound', 
-        data.description || ''
+        data.description || '',
+        userId
       ]
     );
     return {
@@ -44,8 +48,8 @@ class ExercisesModel {
     };
   }
 
-  static async deleteById(id) {
-    await pool.query('DELETE FROM custom_exercises WHERE id = $1', [id]);
+  static async deleteById(id, userId) {
+    await pool.query('DELETE FROM custom_exercises WHERE id = $1 AND user_id = $2', [id, userId]);
   }
 }
 

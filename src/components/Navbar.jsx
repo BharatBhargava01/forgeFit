@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Menu, X, Flame } from 'lucide-react';
+import { Menu, X, Flame, ChevronDown, LogOut, RefreshCw } from 'lucide-react';
 
-export default function Navbar({ currentPage, onNavigate }) {
+export default function Navbar({ currentPage, onNavigate, user, onSignInClick, onSignOutClick, onSyncClick }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const navLinks = [
     { id: 'home', label: 'Home' },
@@ -36,21 +37,90 @@ export default function Navbar({ currentPage, onNavigate }) {
             </span>
           </div>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
+          {/* Desktop Nav Links & User Section */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              {navLinks.map((link) => (
+                <button
+                  key={link.id}
+                  onClick={() => handleLinkClick(link.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                    currentPage === link.id
+                      ? 'text-white bg-white/10 shadow-inner'
+                      : 'text-text-secondary hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+            
+            {/* User Auth Section */}
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 hover:bg-white/5 transition-all text-sm font-semibold text-white cursor-pointer select-none"
+                >
+                  {user.avatar_url ? (
+                    <img 
+                      src={user.avatar_url} 
+                      alt={user.name} 
+                      className="w-6 h-6 rounded-full border border-accent-purple/40"
+                      onError={(e) => { e.target.src = ''; }} // fallback on error
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-accent-purple/20 border border-accent-purple/40 flex items-center justify-center text-accent-purple text-xs font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{user.name.split(' ')[0]}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-text-secondary transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {userMenuOpen && (
+                  <>
+                    {/* Overlay to close menu */}
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0d0d15] p-1.5 shadow-2xl backdrop-blur-xl z-50 text-white animate-slide-up">
+                      <div className="px-3 py-2.5 border-b border-white/5 mb-1.5 text-left">
+                        <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                        <p className="text-[10px] text-text-secondary truncate mt-0.5">{user.email}</p>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          onSyncClick();
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 cursor-pointer text-left"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-accent-cyan" />
+                        Sync Offline Data
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          onSignOutClick();
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-accent-rose hover:bg-accent-rose/10 transition-all flex items-center gap-2 cursor-pointer text-left mt-1"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
               <button
-                key={link.id}
-                onClick={() => handleLinkClick(link.id)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  currentPage === link.id
-                    ? 'text-white bg-white/10 shadow-inner'
-                    : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
+                onClick={onSignInClick}
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 font-semibold text-sm text-white shadow-md shadow-accent-purple/10 transition-all cursor-pointer"
               >
-                {link.label}
+                Sign In
               </button>
-            ))}
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -83,6 +153,63 @@ export default function Navbar({ currentPage, onNavigate }) {
                 {link.label}
               </button>
             ))}
+            
+            {/* Mobile User Section */}
+            <div className="border-t border-white/5 pt-4 mt-2 px-4 space-y-2">
+              {user ? (
+                <>
+                  <div className="flex items-center gap-3 py-2">
+                    {user.avatar_url ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt={user.name} 
+                        className="w-8 h-8 rounded-full border border-accent-purple/40"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-accent-purple/20 border border-accent-purple/40 flex items-center justify-center text-accent-purple font-semibold text-sm">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-white leading-none">{user.name}</p>
+                      <p className="text-[10px] text-text-secondary mt-1">{user.email}</p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      onSyncClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-white flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4 text-accent-cyan" />
+                    Sync Offline Data
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      onSignOutClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-accent-rose/10 border border-accent-rose/20 text-sm font-semibold text-accent-rose flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    onSignInClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple text-sm font-semibold text-white flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Sign In
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

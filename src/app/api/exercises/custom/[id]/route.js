@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import ExercisesModel from '@/models/exercises.model';
+import { getUserIdFromRequest } from '@/utils/auth';
 
 export async function DELETE(request, { params }) {
   try {
+    const userId = await getUserIdFromRequest();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { id } = await params;
-    await ExercisesModel.deleteById(id);
+    await ExercisesModel.deleteById(id, userId);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/exercises/custom error:', err);

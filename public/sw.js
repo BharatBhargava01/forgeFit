@@ -1,4 +1,4 @@
-const CACHE_NAME = 'forgefit-v3';
+const CACHE_NAME = 'forgefit-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -17,18 +17,24 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activate Event - Clean up old caches
+// Activate Event - Clean up old caches & notify clients of updates
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
+      return Promise.all([
+        ...keys.map(key => {
           if (key !== CACHE_NAME) {
             console.log('[Service Worker] Removing old cache', key);
             return caches.delete(key);
           }
+        }),
+        // Broadcast to all PWA clients to force refresh
+        self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
+          clients.forEach(client => {
+            client.postMessage({ type: 'VERSION_UPDATE', version: CACHE_NAME });
+          });
         })
-      );
+      ]);
     })
   );
   self.clients.claim();
@@ -36,14 +42,12 @@ self.addEventListener('activate', event => {
 
 // Fetch Event - Serve cached assets or fallback to network
 self.addEventListener('fetch', event => {
-  // Only handle GET requests to avoid caching POST/PUT/DELETE API or analytics payloads
   if (event.request.method !== 'GET') {
     return;
   }
 
   const url = new URL(event.request.url);
 
-  // Ignore non-http/https requests (e.g., chrome-extension://, about:blank, etc.)
   if (!url.protocol.startsWith('http')) {
     return;
   }
@@ -54,37 +58,50 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first strategy for static assets
+  // 1. Network-First for navigation requests (HTML pages)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then(cachedResponse => {
+            return cachedResponse || caches.match('/');
+          });
+        })
+    );
+    return;
+  }
+
+  // 2. Stale-While-Revalidate for static assets (JS, CSS, Images, Fonts)
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      const fetchPromise = fetch(event.request)
+        .then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            // Cache Google Fonts or local Next.js basic static chunks
+            const isFont = url.origin.includes('fonts.googleapis.com') || url.origin.includes('fonts.gstatic.com');
+            const isLocalStatic = networkResponse.type === 'basic' && (url.pathname.includes('/_next/') || url.pathname.includes('/static/') || STATIC_ASSETS.includes(url.pathname));
 
-      return fetch(event.request).then(networkResponse => {
-        // Cache dynamic Google Fonts requests
-        if (url.origin.includes('fonts.googleapis.com') || url.origin.includes('fonts.gstatic.com')) {
-          return caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        }
+            if (isFont || isLocalStatic) {
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, networkResponse.clone());
+              });
+            }
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Fail silently for background updates
+        });
 
-        // Cache local Next.js JS/CSS chunks that are successful
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          return caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        }
-
-        return networkResponse;
-      }).catch(() => {
-        // If offline and requesting navigation, fallback to root page '/'
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+      return cachedResponse || fetchPromise;
     })
   );
 });
