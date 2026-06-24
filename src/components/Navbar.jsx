@@ -5,7 +5,7 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const navLinks = [
+  const navLinks = user ? [
     { id: 'home', label: 'Home' },
     { id: 'generator', label: 'Generator' },
     { id: 'routine', label: 'Routines' },
@@ -13,6 +13,11 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
     { id: 'create', label: 'Create' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'saved', label: 'Saved' },
+  ] : [
+    { id: 'home', label: 'Home' },
+    { id: 'generator', label: 'Generator' },
+    { id: 'routine', label: 'Routines' },
+    { id: 'library', label: 'Library' },
   ];
 
   const handleLinkClick = (pageId) => {

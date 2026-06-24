@@ -4,7 +4,7 @@ import { getAllExercises, MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
 import { generateWorkout } from '@/lib/generator';
 import { saveWorkout } from '@/lib/storage';
 
-export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorkout, clearPrefill, prefilledMuscles, clearPrefilledMuscles }) {
+export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorkout, clearPrefill, prefilledMuscles, clearPrefilledMuscles, user, onSignInClick }) {
   const [selectedMuscles, setSelectedMuscles] = useState([]);
   const [duration, setDuration] = useState(30);
   const [difficulty, setDifficulty] = useState(2);
@@ -170,6 +170,11 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
   };
 
   const handleSave = async () => {
+    if (!user) {
+      showToast('Please sign in to save your workouts! 💾', 'info');
+      if (onSignInClick) onSignInClick();
+      return;
+    }
     if (!workoutResult) return;
     const name = workoutResult.name || `${workoutResult.muscles.join(' & ')} Session`;
     try {

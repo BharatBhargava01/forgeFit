@@ -89,9 +89,6 @@ export async function GET(request) {
       }
     }
     
-    // 4. Claim orphan records if this is the first user
-    await UsersModel.claimOrphanRecords(user.id);
-    
     // 5. Sign token and set cookie
     const token = signToken({ userId: user.id });
     

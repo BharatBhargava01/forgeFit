@@ -385,8 +385,20 @@ export default function MainPage() {
     };
   }, []);
 
+  // Redirect guest if they try to access restricted pages
+  useEffect(() => {
+    if (!user && ['create', 'analytics', 'saved', 'tracker'].includes(currentPage)) {
+      setCurrentPage('home');
+    }
+  }, [user, currentPage]);
+
   // Handle active workout tracking redirection
   const handleStartWorkout = (workoutTemplate) => {
+    if (!user) {
+      showToast('Please sign in to track your workouts! 🏋️‍♂️', 'info');
+      setAuthModalOpen(true);
+      return;
+    }
     setActiveWorkout(workoutTemplate);
     setCurrentPage('tracker');
     showToast('Workout session started! Timer running.', 'success');
@@ -613,7 +625,14 @@ export default function MainPage() {
 
                   {/* Feature 3 */}
                   <div
-                    onClick={() => setCurrentPage('saved')}
+                    onClick={() => {
+                      if (!user) {
+                        showToast('Please sign in to view your saved workouts! 💾', 'info');
+                        setAuthModalOpen(true);
+                      } else {
+                        setCurrentPage('saved');
+                      }
+                    }}
                     className="glass-card rounded-2xl p-6 border border-white/5 cursor-pointer hover:border-white/15 transition-all group flex flex-col justify-between"
                   >
                     <div>
@@ -642,6 +661,8 @@ export default function MainPage() {
                 key={user ? user.id : 'guest'}
                 onStartWorkout={handleStartWorkout}
                 showToast={showToast}
+                user={user}
+                onSignInClick={() => setAuthModalOpen(true)}
                 // Inspect variables
                 prefilledWorkout={prefilledWorkout}
                 clearPrefill={() => setPrefilledWorkout(null)}
@@ -654,6 +675,8 @@ export default function MainPage() {
               <RoutinesTab
                 key={user ? user.id : 'guest'}
                 showToast={showToast}
+                user={user}
+                onSignInClick={() => setAuthModalOpen(true)}
                 prefilledRoutine={prefilledRoutine}
                 clearPrefill={() => setPrefilledRoutine(null)}
               />

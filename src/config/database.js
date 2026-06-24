@@ -105,6 +105,12 @@ async function initDB() {
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE custom_exercises ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+
+      -- Delete all previously stored anonymous data (where user_id is NULL)
+      DELETE FROM workouts WHERE user_id IS NULL;
+      DELETE FROM routines WHERE user_id IS NULL;
+      DELETE FROM custom_exercises WHERE user_id IS NULL;
+      DELETE FROM workout_logs WHERE user_id IS NULL;
     `);
 
     console.log('✅ Database tables and user associations ready');

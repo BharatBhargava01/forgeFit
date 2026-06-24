@@ -4,7 +4,7 @@ import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
 import { getAllExercises } from '@/lib/data';
 
-export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill }) {
+export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill, user, onSignInClick }) {
   const [goal, setGoal] = useState('hypertrophy');
   const [splitType, setSplitType] = useState('push-pull-legs');
   const [daysPerWeek, setDaysPerWeek] = useState(4);
@@ -150,6 +150,11 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill 
   };
 
   const handleSave = async () => {
+    if (!user) {
+      showToast('Please sign in to save your routines! 📋', 'info');
+      if (onSignInClick) onSignInClick();
+      return;
+    }
     if (!routineResult) return;
     const name = `${routineResult.splitName} (${routineResult.goal.toUpperCase()})`;
     try {

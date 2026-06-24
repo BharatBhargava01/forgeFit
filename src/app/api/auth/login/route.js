@@ -21,9 +21,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
     
-    // Claim orphan records if this is the first user
-    await UsersModel.claimOrphanRecords(user.id);
-    
     const token = signToken({ userId: user.id });
     
     const cookieStore = await cookies();
