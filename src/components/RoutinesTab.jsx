@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X } from 'lucide-react';
+import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical } from 'lucide-react';
 import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
 import { getAllExercises } from '@/lib/data';
@@ -18,6 +18,9 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
   const [swapDayIndex, setSwapDayIndex] = useState(null);
   const [swapExIdx, setSwapExIdx] = useState(null);
   const [swapSearch, setSwapSearch] = useState('');
+
+  // Drag and drop state for routine days
+  const [draggedDayIndex, setDraggedDayIndex] = useState(null);
 
   const handleUpdateRoutineExerciseField = (dayIndex, exIdx, field, value) => {
     setRoutineResult(prev => {
@@ -91,6 +94,40 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
       return sharesMuscle && isDifferent && matchesSearch;
     });
   }, [swapDayIndex, swapExIdx, routineResult, swapSearch]);
+
+  const handleDayDragStart = (e, index) => {
+    setDraggedDayIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDayDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDayDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedDayIndex === null || draggedDayIndex === targetIndex) return;
+
+    setRoutineResult(prev => {
+      const updatedWeek = [...prev.week];
+      const [draggedDay] = updatedWeek.splice(draggedDayIndex, 1);
+      updatedWeek.splice(targetIndex, 0, draggedDay);
+
+      // Re-map dayIndex and dayName sequentially so Day 1 through Day 7 labels stay correct
+      const remappedWeek = updatedWeek.map((day, idx) => ({
+        ...day,
+        dayIndex: idx,
+        dayName: `Day ${idx + 1}`
+      }));
+
+      return {
+        ...prev,
+        week: remappedWeek
+      };
+    });
+    setDraggedDayIndex(null);
+  };
 
   useEffect(() => {
     if (prefilledRoutine) {
@@ -333,8 +370,19 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                   return (
                     <div
                       key={day.dayIndex}
-                      className="glass-card rounded-xl p-4 flex flex-col items-center justify-center text-center opacity-40 border border-white/5 bg-white/1 min-h-[140px]"
+                      draggable
+                      onDragStart={(e) => handleDayDragStart(e, day.dayIndex)}
+                      onDragOver={(e) => handleDayDragOver(e, day.dayIndex)}
+                      onDrop={(e) => handleDayDrop(e, day.dayIndex)}
+                      className={`glass-card rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-300 border bg-white/1 min-h-[140px] cursor-move relative ${
+                        draggedDayIndex === day.dayIndex
+                          ? 'opacity-30 border-dashed border-accent-purple bg-accent-purple/5'
+                          : 'border-white/5 opacity-40 hover:opacity-60'
+                      }`}
                     >
+                      <div className="absolute top-2 right-2">
+                        <GripVertical className="w-3.5 h-3.5 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing" />
+                      </div>
                       <span className="text-2xl mb-1">😴</span>
                       <span className="text-xs text-text-muted font-bold tracking-wider uppercase mb-1">{day.dayName}</span>
                       <span className="text-sm font-semibold text-text-secondary">Rest Day</span>
@@ -345,18 +393,35 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                 return (
                   <div
                     key={day.dayIndex}
+                    draggable
+                    onDragStart={(e) => {
+                      if (e.target.closest('input') || e.target.closest('button') || e.target.closest('select') || e.target.closest('.no-drag')) {
+                        e.preventDefault();
+                        return;
+                      }
+                      handleDayDragStart(e, day.dayIndex);
+                    }}
+                    onDragOver={(e) => handleDayDragOver(e, day.dayIndex)}
+                    onDrop={(e) => handleDayDrop(e, day.dayIndex)}
                     className={`glass-card rounded-xl border transition-all duration-300 md:col-span-1 ${
                       isExpanded ? 'md:col-span-7 md:scale-[1.01]' : ''
-                    } border-white/10 bg-white/3 overflow-hidden`}
+                    } cursor-move ${
+                      draggedDayIndex === day.dayIndex
+                        ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5'
+                        : 'border-white/10'
+                    } bg-white/3 overflow-hidden`}
                   >
                     {/* Day Header Trigger */}
                     <div
                       onClick={() => toggleDayExpanded(day.dayIndex)}
                       className="p-4 flex items-center justify-between cursor-pointer select-none hover:bg-white/5 transition-colors"
                     >
-                      <div className="flex flex-col">
-                        <span className="text-xs text-text-muted font-bold tracking-wider uppercase">{day.dayName}</span>
-                        <span className="text-sm font-extrabold text-white mt-1">{day.label}</span>
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="text-xs text-text-muted font-bold tracking-wider uppercase">{day.dayName}</span>
+                          <span className="text-sm font-extrabold text-white mt-1">{day.label}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 text-text-secondary">
                         <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/5 text-text-muted">
@@ -368,7 +433,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
 
                     {/* Day Exercises List */}
                     {isExpanded && (
-                      <div className="p-4 border-t border-white/5 bg-black/20 space-y-3 animate-fade-in">
+                      <div className="p-4 border-t border-white/5 bg-black/20 space-y-3 animate-fade-in no-drag">
                         <div className="flex flex-wrap gap-2 mb-2">
                           {day.muscles.map(m => (
                             <span key={m} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-accent-purple/10 text-accent-purple border border-accent-purple/20">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X } from 'lucide-react';
+import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X, Plus, Search, GripVertical } from 'lucide-react';
 import { getAllExercises, MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
 import { generateWorkout } from '@/lib/generator';
 import { saveWorkout } from '@/lib/storage';
@@ -17,6 +17,15 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
   // Swap and edit state variables
   const [swapIndex, setSwapIndex] = useState(null);
   const [swapSearch, setSwapSearch] = useState('');
+
+  // Add exercise state variables
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addSearch, setAddSearch] = useState('');
+  const [addFilter, setAddFilter] = useState('All');
+  const [addSelectedIds, setAddSelectedIds] = useState([]);
+
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Duration recalculation helper
   const recalculateDuration = (exercises) => {
@@ -89,6 +98,82 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
       return sharesMuscle && isDifferent && matchesSearch;
     });
   }, [swapIndex, workoutResult, swapSearch]);
+
+  const allAvailableExercises = useMemo(() => {
+    return getAllExercises();
+  }, [addModalOpen]);
+
+  const filteredAddExercises = useMemo(() => {
+    return allAvailableExercises.filter(ex => {
+      const matchSearch = addSearch.trim() === '' || 
+        ex.name.toLowerCase().includes(addSearch.toLowerCase()) ||
+        (ex.description && ex.description.toLowerCase().includes(addSearch.toLowerCase()));
+      
+      const matchFilter = addFilter === 'All' || ex.muscles.includes(addFilter);
+      return matchSearch && matchFilter;
+    });
+  }, [allAvailableExercises, addSearch, addFilter]);
+
+  const toggleAddSelection = (exId) => {
+    setAddSelectedIds(prev =>
+      prev.includes(exId) ? prev.filter(id => id !== exId) : [...prev, exId]
+    );
+  };
+
+  const handleConfirmAddSelection = () => {
+    const selectedExercises = allAvailableExercises.filter(ex => addSelectedIds.includes(ex.id));
+    if (selectedExercises.length === 0) return;
+
+    setWorkoutResult(prev => {
+      const updatedExercises = [...prev.exercises];
+      selectedExercises.forEach(ex => {
+        const isComp = ex.type === 'compound';
+        updatedExercises.push({
+          ...ex,
+          sets: isComp ? 4 : 3,
+          reps: isComp ? 8 : 12,
+          rest: isComp ? 90 : 60
+        });
+      });
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        totalExercises: updatedExercises.length,
+        estimatedMinutes: recalculateDuration(updatedExercises)
+      };
+    });
+
+    setAddModalOpen(false);
+    setAddSearch('');
+    setAddSelectedIds([]);
+    showToast(`Added ${selectedExercises.length} exercise${selectedExercises.length > 1 ? 's' : ''} to workout! 💪`, 'success');
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    setWorkoutResult(prev => {
+      const updatedExercises = [...prev.exercises];
+      const [draggedItem] = updatedExercises.splice(draggedIndex, 1);
+      updatedExercises.splice(targetIndex, 0, draggedItem);
+      return {
+        ...prev,
+        exercises: updatedExercises
+      };
+    });
+    setDraggedIndex(null);
+  };
 
   useEffect(() => {
     if (prefilledWorkout) {
@@ -438,11 +523,26 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                 {workoutResult.exercises.map((ex, i) => (
                   <div
                     key={ex.id || i}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-white/3 border border-white/5 gap-4 hover:border-white/10 transition-colors"
+                    draggable
+                    onDragStart={(e) => {
+                      if (e.target.closest('input') || e.target.closest('button') || e.target.closest('select')) {
+                        e.preventDefault();
+                        return;
+                      }
+                      handleDragStart(e, i);
+                    }}
+                    onDragOver={(e) => handleDragOver(e, i)}
+                    onDrop={(e) => handleDrop(e, i)}
+                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-white/3 border gap-4 hover:border-white/10 transition-all cursor-move ${
+                      draggedIndex === i ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5' : 'border-white/5'
+                    }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-text-secondary border border-white/5 shrink-0">
-                        {i + 1}
+                      <div className="flex items-center gap-1.5 self-center">
+                        <GripVertical className="w-4 h-4 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing shrink-0" />
+                        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-text-secondary border border-white/5 shrink-0">
+                          {i + 1}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <span className="font-bold text-white text-base block">{ex.name}</span>
@@ -531,6 +631,20 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                     </div>
                   </div>
                 ))}
+
+                {/* Add Exercise Button */}
+                <div className="flex justify-center pt-4 border-t border-white/5">
+                  <button
+                    onClick={() => {
+                      setAddModalOpen(true);
+                      setAddSelectedIds([]);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/20 text-white text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Exercise
+                  </button>
+                </div>
               </div>
 
               {/* SWAP ALTERNATIVES MODAL */}
@@ -595,6 +709,129 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                           No alternative exercises found.
                         </div>
                       )}
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* ADD EXERCISE MODAL */}
+              {addModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                  <div className="w-full max-w-2xl bg-bg-card border border-white/10 bg-gradient-to-b from-[#12121a] to-[#0a0a0f] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-slide-up">
+                    
+                    {/* Modal Header */}
+                    <div className="p-5 border-b border-white/5 flex justify-between items-center shrink-0">
+                      <div>
+                        <h4 className="font-heading font-extrabold text-lg text-white">Add Exercises</h4>
+                        <p className="text-xs text-text-secondary mt-0.5">Select the exercises you'd like to append to this workout.</p>
+                      </div>
+                      <button
+                        onClick={() => { setAddModalOpen(false); setAddSearch(''); setAddSelectedIds([]); }}
+                        className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors cursor-pointer border border-white/5"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Modal Search and Filters */}
+                    <div className="p-4 bg-black/20 border-b border-white/5 space-y-3 shrink-0">
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+                          <Search className="w-4 h-4" />
+                        </span>
+                        <input
+                          type="text"
+                          value={addSearch}
+                          onChange={(e) => setAddSearch(e.target.value)}
+                          placeholder="Search exercises..."
+                          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-accent-purple"
+                        />
+                      </div>
+
+                      {/* Muscle Filter chips */}
+                      <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 custom-scrollbar">
+                        {['All', ...MUSCLE_GROUPS].map(muscle => {
+                          const active = addFilter === muscle;
+                          return (
+                            <button
+                              key={muscle}
+                              onClick={() => setAddFilter(muscle)}
+                              className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all shrink-0 cursor-pointer ${
+                                active
+                                  ? 'bg-accent-purple/20 border-accent-purple text-white border'
+                                  : 'bg-white/5 border-white/5 border text-text-secondary hover:text-white'
+                              }`}
+                            >
+                              {muscle}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Modal Exercises List */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                      {filteredAddExercises.length > 0 ? (
+                        filteredAddExercises.map(ex => {
+                          const selected = addSelectedIds.includes(ex.id);
+                          return (
+                            <div
+                              key={ex.id}
+                              onClick={() => toggleAddSelection(ex.id)}
+                              className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                                selected
+                                  ? 'bg-accent-indigo/10 border-accent-indigo'
+                                  : 'bg-white/2 border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <span className="font-bold text-white text-sm block">{ex.name}</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {ex.muscles.map(m => (
+                                    <span key={m} className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-text-secondary border border-white/5">
+                                      {m}
+                                    </span>
+                                  ))}
+                                  <span className="text-[9px] text-text-muted">· {ex.equipment} · {ex.type}</span>
+                                </div>
+                              </div>
+
+                              {/* Check indicator */}
+                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                selected
+                                  ? 'bg-accent-indigo border-accent-indigo text-white'
+                                  : 'border-white/20'
+                              }`}>
+                                {selected && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-xs text-text-muted">
+                          No exercises match your search query.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-4 border-t border-white/5 bg-black/20 flex justify-between items-center shrink-0">
+                      <span className="text-xs text-text-secondary">
+                        {addSelectedIds.length} exercises selected
+                      </span>
+                      <button
+                        onClick={handleConfirmAddSelection}
+                        disabled={addSelectedIds.length === 0}
+                        className={`px-5 py-2.5 rounded-lg text-xs font-bold shadow flex items-center gap-1 cursor-pointer transition-all ${
+                          addSelectedIds.length > 0
+                            ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white hover:opacity-90'
+                            : 'bg-white/5 text-text-muted border border-white/5 cursor-not-allowed'
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Add Selected
+                      </button>
                     </div>
 
                   </div>
