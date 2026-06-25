@@ -143,7 +143,7 @@ export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, e
   const muscleList = muscles.length ? muscles : ['Chest', 'Back', 'Shoulders'];
   muscleList.forEach((muscle, idx) => {
     const count = exercisesPerMuscle + (idx < remaining ? 1 : 0);
-    const filters = { muscles: [muscle] };
+    const filters = { muscles: [muscle], goal };
     if (equipment.length) filters.equipment = equipment;
 
     const picks = getRandomExercises(filters, count + 3)
@@ -156,7 +156,7 @@ export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, e
 
   // Fill if we're short
   if (selectedExercises.length < totalExercises) {
-    const extraFilters = { muscles: muscleList };
+    const extraFilters = { muscles: muscleList, goal };
     if (equipment.length) extraFilters.equipment = equipment;
     const extras = getRandomExercises(extraFilters, 10)
       .filter(e => !usedIds.has(e.id))

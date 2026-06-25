@@ -132,6 +132,7 @@ export async function POST(request) {
         5. Order exercises on training days such that compounds come first, followed by isolations.
         6. Provide reasonable sets, reps, and rest times matching the training goal (${goal}).
         7. Use proper casing and professional naming for exercises and muscle groups.
+        8. If the training goal is Mobility/Flexibility, you MUST ONLY select from specific mobility and flexibility exercises (e.g. World's Greatest Stretch, Cat-Cow Stretch, Cobra Stretch, Child's Pose, 90/90 Hip Rotations, Pigeon Pose, Couch Stretch, Scorpion Stretch, Thread the Needle, Doorway Chest Stretch, Band Chest Opener, etc.) and NOT select standard strength training or weightlifting exercises (like Bench Press, Squats, or Deadlifts).
       `;
 
       const model = genAI.getGenerativeModel({

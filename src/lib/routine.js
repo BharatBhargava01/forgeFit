@@ -71,7 +71,7 @@ export function generateRoutine({ goal = 'hypertrophy', daysPerWeek = 4, splitTy
 
       muscles.forEach(muscle => {
         const perMuscle = Math.max(1, Math.floor(goalCfg.exercisesPerDay / muscles.length));
-        const picks = getRandomExercises({ muscles: [muscle] }, perMuscle + 2)
+        const picks = getRandomExercises({ muscles: [muscle], goal }, perMuscle + 2)
           .filter(e => !usedIds.has(e.id))
           .slice(0, perMuscle);
         picks.forEach(e => usedIds.add(e.id));

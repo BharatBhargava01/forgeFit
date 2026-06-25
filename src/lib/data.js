@@ -194,6 +194,15 @@ export const EXERCISES = [
   { id: 'mf04', name: 'Cobra Stretch', muscles: ['Core', 'Back'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Arch chest up from floor, stretching abs and lower back.' },
   { id: 'mf05', name: 'Child\'s Pose', muscles: ['Back', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Rest on knees, reach hands forward on the floor to stretch upper back.' },
   { id: 'mf06', name: '90/90 Hip Rotations', muscles: ['Glutes'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Sit with knees bent at 90-degree angles on the floor, rotating hips side to side.' },
+  { id: 'mf07', name: 'Pigeon Pose', muscles: ['Glutes', 'Hamstrings'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Cross one leg in front of you at a 90-degree angle and extend the other leg straight back to stretch glutes.' },
+  { id: 'mf08', name: 'Thoracic Spine Rotations', muscles: ['Back', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Kneel and rotate your upper back and arm toward the ceiling to open chest and mid-back.' },
+  { id: 'mf09', name: 'Frog Stretch', muscles: ['Glutes'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Widen knees on the floor and push hips backward to stretch groin and inner thighs.' },
+  { id: 'mf10', name: 'Deep Squat Hold', muscles: ['Quads', 'Glutes', 'Calves'], equipment: 'Bodyweight', difficulty: 1, type: 'compound', description: 'Squat as deep as possible and hold the position, pushing knees out with elbows.' },
+  { id: 'mf11', name: 'Couch Stretch', muscles: ['Quads', 'Glutes'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Place back knee against a wall or couch and lunge forward to stretch hip flexors and quads.' },
+  { id: 'mf12', name: 'Scorpion Stretch', muscles: ['Back', 'Obliques'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Lie face down and reach one leg across your body toward the opposite hand to stretch hips and lower back.' },
+  { id: 'mf13', name: 'Thread the Needle', muscles: ['Back', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Reach one arm underneath your body while on all fours, lowering shoulder to the floor.' },
+  { id: 'mf14', name: 'Doorway Chest Stretch', muscles: ['Chest', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Place forearms on a doorway and step forward to stretch chest muscles.' },
+  { id: 'mf15', name: 'Band Chest Opener', muscles: ['Chest', 'Shoulders'], equipment: 'Band', difficulty: 1, type: 'isolation', description: 'Hold a band in front and pull it wide to stretch chest and shoulders.' },
 
   // ---- FAT LOSS & CIRCUITS ----
   { id: 'fl01', name: 'Kettlebell Goblet Squat to Press', muscles: ['Full Body', 'Quads', 'Shoulders'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Squat holding kettlebell and press overhead as you stand up.' },
@@ -521,9 +530,17 @@ export function getExerciseCount() {
 /**
  * Get exercises filtered by criteria (includes cached custom exercises).
  */
-export function filterExercises({ muscles = [], equipment = [], difficulty = null, type = null, search = '' } = {}) {
+export function filterExercises({ muscles = [], equipment = [], difficulty = null, type = null, search = '', goal = null } = {}) {
   const allExercises = [...EXERCISES, ..._customExercisesCache];
   return allExercises.filter(ex => {
+    // If the goal is mobility/flexibility, only return mobility/flexibility exercises.
+    // Otherwise, exclude mobility/flexibility exercises from standard strength/hypertrophy workouts.
+    if (goal === 'mobility-flexibility') {
+      if (!ex.id.startsWith('mf')) return false;
+    } else if (goal !== null) {
+      if (ex.id.startsWith('mf')) return false;
+    }
+
     if (muscles.length && !muscles.some(m => ex.muscles.includes(m))) return false;
     if (equipment.length && !equipment.includes(ex.equipment)) return false;
     if (difficulty !== null && ex.difficulty !== difficulty) return false;

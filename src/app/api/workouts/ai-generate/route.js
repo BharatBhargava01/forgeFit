@@ -119,6 +119,7 @@ export async function POST(request) {
         2. Ensure a balanced selection starting with heavy compound exercises and finishing with isolation exercises.
         3. Set appropriate sets, reps, and rest times matching the training goal (${goal}).
         4. Order exercises scientifically with compound movements first (heavy barbell/dumbbell first) and stabilizers/core last.
+        5. If the training goal is Mobility/Flexibility, you MUST ONLY select from specific mobility and flexibility exercises (e.g. World's Greatest Stretch, Cat-Cow Stretch, Cobra Stretch, Child's Pose, 90/90 Hip Rotations, Pigeon Pose, Couch Stretch, Scorpion Stretch, Thread the Needle, Doorway Chest Stretch, Band Chest Opener, etc.) and NOT select standard strength training or weightlifting exercises (like Bench Press, Squats, or Deadlifts).
       `;
 
       const model = genAI.getGenerativeModel({
