@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
+import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause } from 'lucide-react';
 import { saveWorkoutLog } from '@/lib/storage';
 
 export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, showToast }) {
@@ -17,8 +17,28 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
   const mainTimerRef = useRef(null);
   const restTimerRef = useRef(null);
 
-  // Initialize tracker exercises
+  // Pause & Initialization State
+  const [isPaused, setIsPaused] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize tracker exercises or restore from saved session
   useEffect(() => {
+    const saved = localStorage.getItem('wg_active_session');
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        if (session.workout && session.loggedExercises) {
+          setLoggedExercises(session.loggedExercises);
+          setElapsedSeconds(session.elapsedSeconds || 0);
+          setIsPaused(session.isPaused || false);
+          setIsInitialized(true);
+          return;
+        }
+      } catch (e) {
+        console.error('Error restoring saved session:', e);
+      }
+    }
+
     if (workout && workout.exercises) {
       const formatted = workout.exercises.map((ex, idx) => {
         // Create initial sets
@@ -44,17 +64,46 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       });
       setLoggedExercises(formatted);
       setElapsedSeconds(0);
+      setIsPaused(false);
     }
+    setIsInitialized(true);
   }, [workout]);
 
   // Main session timer effect
   useEffect(() => {
+    if (isPaused) {
+      if (mainTimerRef.current) {
+        clearInterval(mainTimerRef.current);
+      }
+      return;
+    }
+
     mainTimerRef.current = setInterval(() => {
       setElapsedSeconds(prev => prev + 1);
     }, 1000);
 
-    return () => clearInterval(mainTimerRef.current);
-  }, []);
+    return () => {
+      if (mainTimerRef.current) {
+        clearInterval(mainTimerRef.current);
+      }
+    };
+  }, [isPaused]);
+
+  // Auto-save session state to localStorage
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    if (workout && loggedExercises.length > 0) {
+      const sessionData = {
+        workout,
+        elapsedSeconds,
+        loggedExercises,
+        isPaused,
+        lastUpdated: Date.now()
+      };
+      localStorage.setItem('wg_active_session', JSON.stringify(sessionData));
+    }
+  }, [workout, elapsedSeconds, loggedExercises, isPaused, isInitialized]);
 
   // Rest countdown timer effect
   useEffect(() => {
@@ -200,6 +249,9 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       clearInterval(mainTimerRef.current);
       clearInterval(restTimerRef.current);
       
+      // Clear saved session from localStorage
+      localStorage.removeItem('wg_active_session');
+      
       onFinishWorkout();
     } catch (err) {
       showToast('Failed to log workout session', 'error');
@@ -210,6 +262,8 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     if (confirm('Are you sure you want to cancel tracking? Your current progress will be lost.')) {
       clearInterval(mainTimerRef.current);
       clearInterval(restTimerRef.current);
+      // Clear saved session from localStorage
+      localStorage.removeItem('wg_active_session');
       onCancelWorkout();
     }
   };
@@ -229,8 +283,20 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
           </p>
         </div>
         <div className="flex items-center gap-3 bg-black/30 border border-white/5 px-4 py-2.5 rounded-xl">
-          <Timer className="w-5 h-5 text-accent-purple animate-pulse-glow" />
-          <span className="font-heading font-black text-2xl text-white tracking-widest leading-none">
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="p-1 rounded-lg hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer mr-1"
+            title={isPaused ? "Resume Workout" : "Pause Workout"}
+          >
+            {isPaused ? (
+              <Play className="w-5 h-5 text-accent-cyan fill-accent-cyan animate-pulse" />
+            ) : (
+              <Pause className="w-5 h-5 text-accent-purple" />
+            )}
+          </button>
+          <div className="h-6 w-px bg-white/10"></div>
+          <Timer className={`w-5 h-5 text-accent-purple ${isPaused ? '' : 'animate-pulse-glow'}`} />
+          <span className={`font-heading font-black text-2xl tracking-widest leading-none transition-colors ${isPaused ? 'text-text-muted' : 'text-white'}`}>
             {formatTime(elapsedSeconds)}
           </span>
         </div>

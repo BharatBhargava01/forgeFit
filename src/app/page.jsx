@@ -25,6 +25,9 @@ export default function MainPage() {
   const [motivationEnabled, setMotivationEnabled] = useState(false);
   const [motivationHours, setMotivationHours] = useState([8, 12, 15, 18, 21]);
   
+  // Active session recovery state
+  const [savedSession, setSavedSession] = useState(null);
+  
   // Custom caches / selections to prefill tabs
   const [prefilledWorkout, setPrefilledWorkout] = useState(null);
   const [prefilledRoutine, setPrefilledRoutine] = useState(null);
@@ -447,6 +450,28 @@ export default function MainPage() {
     }
   }, [user, currentPage]);
 
+  // Check saved session in localStorage
+  const checkSavedSession = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wg_active_session');
+      if (saved) {
+        try {
+          setSavedSession(JSON.parse(saved));
+        } catch (e) {
+          localStorage.removeItem('wg_active_session');
+          setSavedSession(null);
+        }
+      } else {
+        setSavedSession(null);
+      }
+    }
+  };
+
+  // Check for saved session on navigation or state change
+  useEffect(() => {
+    checkSavedSession();
+  }, [currentPage, activeWorkout]);
+
   // Handle active workout tracking redirection
   const handleStartWorkout = (workoutTemplate) => {
     if (!user) {
@@ -454,6 +479,10 @@ export default function MainPage() {
       setAuthModalOpen(true);
       return;
     }
+    // Clear any conflicting saved sessions
+    localStorage.removeItem('wg_active_session');
+    setSavedSession(null);
+
     setActiveWorkout(workoutTemplate);
     setCurrentPage('tracker');
     showToast('Workout session started! Timer running.', 'success');
@@ -480,12 +509,32 @@ export default function MainPage() {
   const handleFinishWorkout = () => {
     setActiveWorkout(null);
     setCurrentPage('analytics');
+    localStorage.removeItem('wg_active_session');
+    setSavedSession(null);
   };
 
   const handleCancelWorkout = () => {
     setActiveWorkout(null);
     setCurrentPage('home');
     showToast('Session cancelled', 'info');
+    localStorage.removeItem('wg_active_session');
+    setSavedSession(null);
+  };
+
+  const handleResumeSavedSession = () => {
+    if (savedSession) {
+      setActiveWorkout(savedSession.workout);
+      setCurrentPage('tracker');
+      showToast('Resumed active workout! 💪', 'success');
+    }
+  };
+
+  const handleDiscardSavedSession = () => {
+    if (confirm('Are you sure you want to discard your saved workout progress? This cannot be undone.')) {
+      localStorage.removeItem('wg_active_session');
+      setSavedSession(null);
+      showToast('Saved workout session discarded.', 'info');
+    }
   };
 
   return (
@@ -504,6 +553,48 @@ export default function MainPage() {
       {/* Main Content Area */}
       <main className="flex-grow">
         
+        {/* Saved Session Resume Banner */}
+        {savedSession && currentPage !== 'tracker' && (
+          <div className="w-full max-w-4xl mx-auto px-4 pt-6 animate-slide-down">
+            <div className="relative group overflow-hidden rounded-2xl p-0.5 bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan shadow-xl shadow-accent-purple/10">
+              {/* Glassmorphic inner container */}
+              <div className="glass-card rounded-[14px] p-4 bg-[#12121a]/90 backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <div className="flex items-center gap-4 text-left w-full md:w-auto">
+                  <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-xl shrink-0 animate-pulse">
+                    ⚡
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-accent-cyan uppercase tracking-wider font-extrabold block">Unfinished Workout Detected</span>
+                    <h4 className="font-heading font-bold text-sm text-white mt-0.5">
+                      Resume "{savedSession.workout?.name || 'Workout Session'}"?
+                    </h4>
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      Paused at {Math.floor(savedSession.elapsedSeconds / 60)}m {savedSession.elapsedSeconds % 60}s · {savedSession.loggedExercises?.length || 0} exercises tracked
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end shrink-0">
+                  <button
+                    onClick={handleDiscardSavedSession}
+                    className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-white/5 hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 hover:border-accent-rose/20 text-text-secondary font-bold text-xs transition-all cursor-pointer text-center"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    onClick={handleResumeSavedSession}
+                    className="flex-1 md:flex-none px-5 py-2 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-extrabold text-xs shadow-md shadow-accent-purple/25 transition-all cursor-pointer text-center"
+                  >
+                    Resume Workout
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Active Tracker Tab takes full priority if running */}
         {currentPage === 'tracker' && activeWorkout ? (
           <TrackerTab
