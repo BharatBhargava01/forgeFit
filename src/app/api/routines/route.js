@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import RoutinesModel from '@/models/routines.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { withCache, invalidateCache } from '@/lib/redis';
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const routines = await RoutinesModel.findAll(userId);
+    const routines = await withCache(`user:${userId}:routines`, 3600, () => RoutinesModel.findAll(userId));
     return NextResponse.json(routines);
   } catch (err) {
     console.error('GET /api/routines error:', err);
@@ -25,6 +26,7 @@ export async function POST(request) {
     const body = await request.json();
     const { name, ...data } = body;
     const routine = await RoutinesModel.create(name, data, userId);
+    await invalidateCache(`user:${userId}:routines`);
     return NextResponse.json(routine, { status: 201 });
   } catch (err) {
     console.error('POST /api/routines error:', err);

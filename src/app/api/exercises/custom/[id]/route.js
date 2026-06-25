@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import ExercisesModel from '@/models/exercises.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { invalidateCache } from '@/lib/redis';
 
 export async function DELETE(request, { params }) {
   try {
@@ -10,6 +11,7 @@ export async function DELETE(request, { params }) {
     }
     const { id } = await params;
     await ExercisesModel.deleteById(id, userId);
+    await invalidateCache(`user:${userId}:custom_exercises`);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/exercises/custom error:', err);

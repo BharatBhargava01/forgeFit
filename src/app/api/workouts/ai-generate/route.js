@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import genAI from '@/utils/gemini';
 import { SchemaType } from '@google/generative-ai';
+import { withCache, generateAiCacheKey } from '@/lib/redis';
 
 const workoutResponseSchema = {
   type: SchemaType.OBJECT,
@@ -82,64 +83,74 @@ export async function POST(request) {
       return NextResponse.json({ error: "At least one target muscle group must be specified." }, { status: 400 });
     }
 
-    const difficultyLabels = { 1: "Beginner", 2: "Intermediate", 3: "Advanced" };
-    const difficultyText = difficultyLabels[difficulty] || "Intermediate";
-
-    const goalLabels = {
-      strength: "Strength (focused on low reps, heavy compound movements, longer rest, higher sets)",
-      hypertrophy: "Hypertrophy (focused on moderate reps, balanced compound/isolation, moderate rest)",
-      endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)",
-      'fat-loss': "Fat Loss (focused on higher reps, shorter rest times, high-density circuits)",
-      powerlifting: "Powerlifting (focused on very low reps, high sets, maximum compound lifting, very long rest)",
-      'cardio-conditioning': "Cardio/Conditioning (focused on high-intensity exercises, very high reps, minimal rest)",
-      'mobility-flexibility': "Mobility/Flexibility (focused on functional range of motion, stretching, controlled contractions, moderate rest)"
-    };
-    const goalText = goalLabels[goal] || goalLabels.hypertrophy;
-
-    const prompt = `
-      You are a professional personal trainer. Generate a highly customized workout routine.
-      Target Muscle Groups: ${muscles.join(', ')}
-      Difficulty Level: ${difficultyText}
-      Target Duration: ${duration} minutes
-      Available Equipment: ${equipment && equipment.length ? equipment.join(', ') : 'Any standard gym equipment'}
-      Training Goal: ${goalText}
-
-      Instructions:
-      1. Choose exercises that specifically target the requested muscle groups.
-      2. Ensure a balanced selection starting with heavy compound exercises and finishing with isolation exercises.
-      3. Set appropriate sets, reps, and rest times matching the training goal (${goal}).
-      4. Order exercises scientifically with compound movements first (heavy barbell/dumbbell first) and stabilizers/core last.
-    `;
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: workoutResponseSchema,
-      },
+    const cacheKey = generateAiCacheKey('workout', {
+      muscles: [...muscles].sort(),
+      difficulty,
+      duration,
+      equipment: equipment && Array.isArray(equipment) ? [...equipment].sort() : equipment,
+      goal
     });
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const workoutData = JSON.parse(responseText);
+    const formattedWorkout = await withCache(cacheKey, 604800, async () => {
+      const difficultyLabels = { 1: "Beginner", 2: "Intermediate", 3: "Advanced" };
+      const difficultyText = difficultyLabels[difficulty] || "Intermediate";
 
-    const formattedWorkout = {
-      name: workoutData.name,
-      description: workoutData.description,
-      muscles: muscles,
-      difficulty: parseInt(difficulty) || 2,
-      duration: parseInt(duration) || 30,
-      goal: goal,
-      exercises: workoutData.exercises.map(ex => ({
-        ...ex,
-        difficulty: parseInt(ex.difficulty) || parseInt(difficulty) || 2,
-        sets: parseInt(ex.sets) || 3,
-        reps: parseInt(ex.reps) || 10,
-        rest: parseInt(ex.rest) || 60
-      })),
-      totalExercises: workoutData.exercises.length,
-      estimatedMinutes: parseInt(workoutData.estimatedMinutes) || duration || 30
-    };
+      const goalLabels = {
+        strength: "Strength (focused on low reps, heavy compound movements, longer rest, higher sets)",
+        hypertrophy: "Hypertrophy (focused on moderate reps, balanced compound/isolation, moderate rest)",
+        endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)",
+        'fat-loss': "Fat Loss (focused on higher reps, shorter rest times, high-density circuits)",
+        powerlifting: "Powerlifting (focused on very low reps, high sets, maximum compound lifting, very long rest)",
+        'cardio-conditioning': "Cardio/Conditioning (focused on high-intensity exercises, very high reps, minimal rest)",
+        'mobility-flexibility': "Mobility/Flexibility (focused on functional range of motion, stretching, controlled contractions, moderate rest)"
+      };
+      const goalText = goalLabels[goal] || goalLabels.hypertrophy;
+
+      const prompt = `
+        You are a professional personal trainer. Generate a highly customized workout routine.
+        Target Muscle Groups: ${muscles.join(', ')}
+        Difficulty Level: ${difficultyText}
+        Target Duration: ${duration} minutes
+        Available Equipment: ${equipment && equipment.length ? equipment.join(', ') : 'Any standard gym equipment'}
+        Training Goal: ${goalText}
+
+        Instructions:
+        1. Choose exercises that specifically target the requested muscle groups.
+        2. Ensure a balanced selection starting with heavy compound exercises and finishing with isolation exercises.
+        3. Set appropriate sets, reps, and rest times matching the training goal (${goal}).
+        4. Order exercises scientifically with compound movements first (heavy barbell/dumbbell first) and stabilizers/core last.
+      `;
+
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: workoutResponseSchema,
+        },
+      });
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const workoutData = JSON.parse(responseText);
+
+      return {
+        name: workoutData.name,
+        description: workoutData.description,
+        muscles: muscles,
+        difficulty: parseInt(difficulty) || 2,
+        duration: parseInt(duration) || 30,
+        goal: goal,
+        exercises: workoutData.exercises.map(ex => ({
+          ...ex,
+          difficulty: parseInt(ex.difficulty) || parseInt(difficulty) || 2,
+          sets: parseInt(ex.sets) || 3,
+          reps: parseInt(ex.reps) || 10,
+          rest: parseInt(ex.rest) || 60
+        })),
+        totalExercises: workoutData.exercises.length,
+        estimatedMinutes: parseInt(workoutData.estimatedMinutes) || duration || 30
+      };
+    });
 
     return NextResponse.json(formattedWorkout);
   } catch (error) {

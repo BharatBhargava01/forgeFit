@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import ExercisesModel from '@/models/exercises.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { withCache, invalidateCache } from '@/lib/redis';
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const exercises = await ExercisesModel.findAll(userId);
+    const exercises = await withCache(`user:${userId}:custom_exercises`, 3600, () => ExercisesModel.findAll(userId));
     return NextResponse.json(exercises);
   } catch (err) {
     console.error('GET /api/exercises/custom error:', err);
@@ -28,6 +29,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Exercise name is required' }, { status: 400 });
     }
     const exercise = await ExercisesModel.create(name, data, userId);
+    await invalidateCache(`user:${userId}:custom_exercises`);
     return NextResponse.json(exercise, { status: 201 });
   } catch (err) {
     console.error('POST /api/exercises/custom error:', err);

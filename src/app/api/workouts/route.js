@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import WorkoutsModel from '@/models/workouts.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { withCache, invalidateCache } from '@/lib/redis';
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const workouts = await WorkoutsModel.findAll(userId);
+    const workouts = await withCache(`user:${userId}:workouts`, 3600, () => WorkoutsModel.findAll(userId));
     return NextResponse.json(workouts);
   } catch (err) {
     console.error('GET /api/workouts error:', err);
@@ -25,6 +26,7 @@ export async function POST(request) {
     const body = await request.json();
     const { name, ...data } = body;
     const workout = await WorkoutsModel.create(name, data, userId);
+    await invalidateCache(`user:${userId}:workouts`);
     return NextResponse.json(workout, { status: 201 });
   } catch (err) {
     console.error('POST /api/workouts error:', err);

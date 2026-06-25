@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import genAI from '@/utils/gemini';
 import { SchemaType } from '@google/generative-ai';
+import { withCache, generateAiCacheKey } from '@/lib/redis';
 
 const routineResponseSchema = {
   type: SchemaType.OBJECT,
@@ -101,86 +102,90 @@ export async function POST(request) {
     const body = await request.json();
     const { goal, splitType, daysPerWeek } = body;
 
-    const goalLabels = {
-      strength: "Strength (focused on low reps, heavy compound movements, longer rest, higher sets)",
-      hypertrophy: "Hypertrophy (focused on moderate reps, balanced compound/isolation, moderate rest)",
-      endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)",
-      'fat-loss': "Fat Loss (focused on higher reps, shorter rest times, high-density circuits)",
-      powerlifting: "Powerlifting (focused on very low reps, high sets, maximum compound lifting, very long rest)",
-      'cardio-conditioning': "Cardio/Conditioning (focused on high-intensity exercises, very high reps, minimal rest)",
-      'mobility-flexibility': "Mobility/Flexibility (focused on functional range of motion, stretching, controlled contractions, moderate rest)"
-    };
-    const goalText = goalLabels[goal] || goalLabels.hypertrophy;
+    const cacheKey = generateAiCacheKey('routine', { goal, splitType, daysPerWeek });
 
-    const prompt = `
-      You are a professional personal trainer. Generate a highly customized 7-day weekly workout routine.
-      
-      Parameters:
-      - Training Goal: ${goalText}
-      - Split Type: ${splitType}
-      - Training Days: ${daysPerWeek} days per week, and ${7 - daysPerWeek} rest days.
-      
-      Instructions:
-      1. Distribute training days and rest days logically across the 7 days (Monday through Sunday).
-      2. Ensure that exactly ${daysPerWeek} days have "isRest: false" and exactly ${7 - daysPerWeek} days have "isRest: true".
-      3. For training days, select appropriate target muscles matching the split type (${splitType}), and generate realistic exercises.
-      4. For rest days, leave the muscles and exercises arrays empty and set isRest to true, and label it as 'Rest'.
-      5. Order exercises on training days such that compounds come first, followed by isolations.
-      6. Provide reasonable sets, reps, and rest times matching the training goal (${goal}).
-      7. Use proper casing and professional naming for exercises and muscle groups.
-    `;
+    const formattedRoutine = await withCache(cacheKey, 604800, async () => {
+      const goalLabels = {
+        strength: "Strength (focused on low reps, heavy compound movements, longer rest, higher sets)",
+        hypertrophy: "Hypertrophy (focused on moderate reps, balanced compound/isolation, moderate rest)",
+        endurance: "Endurance (focused on high reps, circuit or low rest, lighter weights)",
+        'fat-loss': "Fat Loss (focused on higher reps, shorter rest times, high-density circuits)",
+        powerlifting: "Powerlifting (focused on very low reps, high sets, maximum compound lifting, very long rest)",
+        'cardio-conditioning': "Cardio/Conditioning (focused on high-intensity exercises, very high reps, minimal rest)",
+        'mobility-flexibility': "Mobility/Flexibility (focused on functional range of motion, stretching, controlled contractions, moderate rest)"
+      };
+      const goalText = goalLabels[goal] || goalLabels.hypertrophy;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: routineResponseSchema,
-      },
-    });
+      const prompt = `
+        You are a professional personal trainer. Generate a highly customized 7-day weekly workout routine.
+        
+        Parameters:
+        - Training Goal: ${goalText}
+        - Split Type: ${splitType}
+        - Training Days: ${daysPerWeek} days per week, and ${7 - daysPerWeek} rest days.
+        
+        Instructions:
+        1. Distribute training days and rest days logically across the 7 days (Monday through Sunday).
+        2. Ensure that exactly ${daysPerWeek} days have "isRest: false" and exactly ${7 - daysPerWeek} days have "isRest: true".
+        3. For training days, select appropriate target muscles matching the split type (${splitType}), and generate realistic exercises.
+        4. For rest days, leave the muscles and exercises arrays empty and set isRest to true, and label it as 'Rest'.
+        5. Order exercises on training days such that compounds come first, followed by isolations.
+        6. Provide reasonable sets, reps, and rest times matching the training goal (${goal}).
+        7. Use proper casing and professional naming for exercises and muscle groups.
+      `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const routineData = JSON.parse(responseText);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: routineResponseSchema,
+        },
+      });
 
-    // Normalize and clean up response
-    const formattedWeek = routineData.week.map(day => {
-      if (day.isRest) {
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const routineData = JSON.parse(responseText);
+
+      // Normalize and clean up response
+      const formattedWeek = routineData.week.map(day => {
+        if (day.isRest) {
+          return {
+            dayName: day.dayName,
+            dayIndex: parseInt(day.dayIndex) || 0,
+            isRest: true,
+            label: day.label || 'Rest',
+            muscles: [],
+            exercises: []
+          };
+        }
         return {
           dayName: day.dayName,
           dayIndex: parseInt(day.dayIndex) || 0,
-          isRest: true,
-          label: day.label || 'Rest',
-          muscles: [],
-          exercises: []
+          isRest: false,
+          label: day.label || 'Training Day',
+          muscles: day.muscles || [],
+          exercises: (day.exercises || []).map(ex => ({
+            name: ex.name,
+            muscles: ex.muscles || [],
+            equipment: ex.equipment || 'Bodyweight',
+            difficulty: parseInt(ex.difficulty) || 2,
+            type: ex.type || 'compound',
+            description: ex.description || '',
+            sets: parseInt(ex.sets) || 3,
+            reps: parseInt(ex.reps) || 10,
+            rest: parseInt(ex.rest) || 60
+          }))
         };
-      }
+      });
+
       return {
-        dayName: day.dayName,
-        dayIndex: parseInt(day.dayIndex) || 0,
-        isRest: false,
-        label: day.label || 'Training Day',
-        muscles: day.muscles || [],
-        exercises: (day.exercises || []).map(ex => ({
-          name: ex.name,
-          muscles: ex.muscles || [],
-          equipment: ex.equipment || 'Bodyweight',
-          difficulty: parseInt(ex.difficulty) || 2,
-          type: ex.type || 'compound',
-          description: ex.description || '',
-          sets: parseInt(ex.sets) || 3,
-          reps: parseInt(ex.reps) || 10,
-          rest: parseInt(ex.rest) || 60
-        }))
+        goal,
+        daysPerWeek: parseInt(daysPerWeek) || 4,
+        splitType,
+        splitName: routineData.splitName || "Custom AI Split",
+        week: formattedWeek
       };
     });
-
-    const formattedRoutine = {
-      goal,
-      daysPerWeek: parseInt(daysPerWeek) || 4,
-      splitType,
-      splitName: routineData.splitName || "Custom AI Split",
-      week: formattedWeek
-    };
 
     return NextResponse.json(formattedRoutine);
   } catch (error) {

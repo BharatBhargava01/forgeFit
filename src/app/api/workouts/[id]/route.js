@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import WorkoutsModel from '@/models/workouts.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { invalidateCache } from '@/lib/redis';
 
 export async function DELETE(request, { params }) {
   try {
@@ -10,6 +11,7 @@ export async function DELETE(request, { params }) {
     }
     const { id } = await params;
     await WorkoutsModel.deleteById(id, userId);
+    await invalidateCache(`user:${userId}:workouts`);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/workouts error:', err);

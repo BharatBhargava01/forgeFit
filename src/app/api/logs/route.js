@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import LogsModel from '@/models/logs.model';
 import { getUserIdFromRequest } from '@/utils/auth';
+import { withCache, invalidateCache } from '@/lib/redis';
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const logs = await LogsModel.findAll(userId);
+    const logs = await withCache(`user:${userId}:logs`, 3600, () => LogsModel.findAll(userId));
     return NextResponse.json(logs);
   } catch (err) {
     console.error('GET /api/logs error:', err);
@@ -25,6 +26,7 @@ export async function POST(request) {
     const body = await request.json();
     const { name, ...data } = body;
     const log = await LogsModel.create(name, data, userId);
+    await invalidateCache(`user:${userId}:logs`);
     return NextResponse.json(log, { status: 201 });
   } catch (err) {
     console.error('POST /api/logs error:', err);
