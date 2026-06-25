@@ -39,7 +39,7 @@ function randomBetween(min, max) {
  * @param {string} params.splitType - key from SPLIT_TYPES
  * @returns {Object} Weekly routine
  */
-export function generateRoutine({ goal = 'hypertrophy', daysPerWeek = 4, splitType = 'push-pull-legs' }) {
+export function generateRoutine({ goal = 'hypertrophy', daysPerWeek = 4, splitType = 'push-pull-legs', profile = null }) {
   const split = SPLIT_TYPES[splitType];
   if (!split) return null;
 
@@ -78,12 +78,18 @@ export function generateRoutine({ goal = 'hypertrophy', daysPerWeek = 4, splitTy
         dayExercises.push(...picks);
       });
 
+      // Personalization
+      let adjustedRest = goalCfg.rest;
+      if (profile && profile.age && parseInt(profile.age) > 50) {
+        adjustedRest += 15;
+      }
+
       // Trim and assign prescription
       dayExercises = dayExercises.slice(0, goalCfg.exercisesPerDay).map(ex => ({
         ...ex,
         sets: randomBetween(goalCfg.setsRange[0], goalCfg.setsRange[1]),
         reps: randomBetween(goalCfg.repsRange[0], goalCfg.repsRange[1]),
-        rest: goalCfg.rest,
+        rest: adjustedRest,
       }));
 
       // Sort: compounds first (with heavy compounds prioritized)

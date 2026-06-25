@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical } from 'lucide-react';
+import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical, Plus, Search, Check } from 'lucide-react';
 import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
-import { getAllExercises } from '@/lib/data';
+import { getAllExercises, MUSCLE_GROUPS } from '@/lib/data';
 
 export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill, user, onSignInClick }) {
   const [goal, setGoal] = useState('hypertrophy');
@@ -21,6 +21,16 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
 
   // Drag and drop state for routine days
   const [draggedDayIndex, setDraggedDayIndex] = useState(null);
+
+  // Drag and drop state for exercises
+  const [draggedExDayIndex, setDraggedExDayIndex] = useState(null);
+  const [draggedExIndex, setDraggedExIndex] = useState(null);
+
+  // Add exercise states
+  const [addExerciseDayIndex, setAddExerciseDayIndex] = useState(null);
+  const [addSearch, setAddSearch] = useState('');
+  const [addFilter, setAddFilter] = useState('All');
+  const [addSelectedIds, setAddSelectedIds] = useState([]);
 
   const handleUpdateRoutineExerciseField = (dayIndex, exIdx, field, value) => {
     setRoutineResult(prev => {
@@ -129,6 +139,111 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
     setDraggedDayIndex(null);
   };
 
+  const handleExDragStart = (e, dayIndex, exIdx) => {
+    e.stopPropagation();
+    setDraggedExDayIndex(dayIndex);
+    setDraggedExIndex(exIdx);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ dayIndex, exIdx }));
+  };
+
+  const handleExDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleExDrop = (e, targetDayIndex, targetExIdx) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedExDayIndex === null || draggedExIndex === null) return;
+
+    setRoutineResult(prev => {
+      const sourceDay = prev.week.find(d => d.dayIndex === draggedExDayIndex);
+      if (!sourceDay) return prev;
+      const draggedItem = sourceDay.exercises[draggedExIndex];
+      if (!draggedItem) return prev;
+
+      const updatedWeek = prev.week.map(day => {
+        if (day.dayIndex === draggedExDayIndex && draggedExDayIndex === targetDayIndex) {
+          const updatedExercises = [...day.exercises];
+          const [removed] = updatedExercises.splice(draggedExIndex, 1);
+          updatedExercises.splice(targetExIdx, 0, removed);
+          return { ...day, exercises: updatedExercises };
+        } else if (day.dayIndex === draggedExDayIndex) {
+          const updatedExercises = day.exercises.filter((_, i) => i !== draggedExIndex);
+          return { ...day, exercises: updatedExercises };
+        } else if (day.dayIndex === targetDayIndex) {
+          const updatedExercises = [...day.exercises];
+          updatedExercises.splice(targetExIdx, 0, draggedItem);
+          return { ...day, exercises: updatedExercises };
+        }
+        return day;
+      });
+      return { ...prev, week: updatedWeek };
+    });
+
+    setDraggedExDayIndex(null);
+    setDraggedExIndex(null);
+  };
+
+  const handleExDragEnd = () => {
+    setDraggedExDayIndex(null);
+    setDraggedExIndex(null);
+  };
+
+  const allAvailableExercises = useMemo(() => {
+    return getAllExercises();
+  }, [addExerciseDayIndex]);
+
+  const filteredAddExercises = useMemo(() => {
+    return allAvailableExercises.filter(ex => {
+      const matchSearch = addSearch.trim() === '' || 
+        ex.name.toLowerCase().includes(addSearch.toLowerCase()) ||
+        (ex.description && ex.description.toLowerCase().includes(addSearch.toLowerCase()));
+      
+      const matchFilter = addFilter === 'All' || ex.muscles.includes(addFilter);
+      return matchSearch && matchFilter;
+    });
+  }, [allAvailableExercises, addSearch, addFilter]);
+
+  const toggleAddSelection = (exId) => {
+    setAddSelectedIds(prev =>
+      prev.includes(exId) ? prev.filter(id => id !== exId) : [...prev, exId]
+    );
+  };
+
+  const handleConfirmAddSelection = () => {
+    if (addExerciseDayIndex === null) return;
+    const selectedExercises = allAvailableExercises.filter(ex => addSelectedIds.includes(ex.id));
+    if (selectedExercises.length === 0) return;
+
+    setRoutineResult(prev => {
+      const updatedWeek = prev.week.map(day => {
+        if (day.dayIndex === addExerciseDayIndex) {
+          const updatedExercises = [...day.exercises];
+          selectedExercises.forEach(ex => {
+            const isComp = ex.type === 'compound';
+            updatedExercises.push({
+              ...ex,
+              sets: isComp ? 4 : 3,
+              reps: isComp ? 8 : 12,
+              rest: isComp ? 90 : 60
+            });
+          });
+          return { ...day, exercises: updatedExercises };
+        }
+        return day;
+      });
+      return { ...prev, week: updatedWeek };
+    });
+
+    const dayName = routineResult.week.find(d => d.dayIndex === addExerciseDayIndex)?.dayName || 'day';
+    showToast(`Added ${selectedExercises.length} exercise${selectedExercises.length > 1 ? 's' : ''} to ${dayName}! 💪`, 'success');
+    
+    setAddExerciseDayIndex(null);
+    setAddSearch('');
+    setAddSelectedIds([]);
+  };
+
   useEffect(() => {
     if (prefilledRoutine) {
       setRoutineResult(prefilledRoutine);
@@ -147,6 +262,12 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
       setSplitType(defaultSplit.key);
     }
   }, []);
+
+  useEffect(() => {
+    if (user && user.profile && user.profile.goal) {
+      setGoal(user.profile.goal);
+    }
+  }, [user]);
 
   const handleSplitChange = (key) => {
     setSplitType(key);
@@ -172,14 +293,14 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
       } catch (err) {
         console.warn('AI routine generation failed, falling back to rule-based engine:', err);
         showToast('AI Generation failed. Falling back to traditional rules.', 'error');
-        const fallback = generateRoutine({ goal, daysPerWeek, splitType });
+        const fallback = generateRoutine({ goal, daysPerWeek, splitType, profile: user?.profile || null });
         setRoutineResult(fallback);
       } finally {
         setLoading(false);
       }
     } else {
       setTimeout(() => {
-        const res = generateRoutine({ goal, daysPerWeek, splitType });
+        const res = generateRoutine({ goal, daysPerWeek, splitType, profile: user?.profile || null });
         setRoutineResult(res);
         setLoading(false);
       }, 800);
@@ -441,10 +562,37 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                             </span>
                           ))}
                         </div>
-                        <div className="space-y-2">
+                        <div
+                          onDragOver={handleExDragOver}
+                          onDrop={(e) => {
+                            if (e.target === e.currentTarget) {
+                              handleExDrop(e, day.dayIndex, day.exercises?.length || 0);
+                            }
+                          }}
+                          className="space-y-2 min-h-[30px]"
+                        >
                           {day.exercises?.map((ex, exIdx) => (
-                            <div key={ex.id || exIdx} className="flex flex-col sm:flex-row justify-between sm:items-center py-2.5 px-3 rounded-lg bg-white/2 border border-white/5 text-xs text-text-secondary gap-3">
+                            <div
+                              key={ex.id || exIdx}
+                              draggable
+                              onDragStart={(e) => {
+                                if (e.target.closest('input') || e.target.closest('button') || e.target.closest('select')) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                handleExDragStart(e, day.dayIndex, exIdx);
+                              }}
+                              onDragOver={handleExDragOver}
+                              onDrop={(e) => handleExDrop(e, day.dayIndex, exIdx)}
+                              onDragEnd={handleExDragEnd}
+                              className={`flex flex-col sm:flex-row justify-between sm:items-center py-2.5 px-3 rounded-lg bg-white/2 border text-xs text-text-secondary gap-3 transition-all cursor-move ${
+                                draggedExDayIndex === day.dayIndex && draggedExIndex === exIdx
+                                  ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5'
+                                  : 'border-white/5 hover:border-white/10'
+                              }`}
+                            >
                               <div className="flex items-center gap-2">
+                                <GripVertical className="w-3.5 h-3.5 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing shrink-0" />
                                 <Dumbbell className="w-3.5 h-3.5 text-accent-indigo shrink-0" />
                                 <span className="font-bold text-white text-left">{ex.name}</span>
                               </div>
@@ -510,6 +658,20 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                               </div>
                             </div>
                           ))}
+                        </div>
+
+                        {/* Add Exercise Button */}
+                        <div className="flex justify-center pt-3 border-t border-white/5 mt-3">
+                          <button
+                            onClick={() => {
+                              setAddExerciseDayIndex(day.dayIndex);
+                              setAddSelectedIds([]);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/15 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Exercise
+                          </button>
                         </div>
                       </div>
                     )}
@@ -598,6 +760,130 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                   No alternative exercises found.
                 </div>
               )}
+            </div>
+
+          </div>
+        </div>
+      )}
+      {/* ADD EXERCISE TO ROUTINE DAY MODAL */}
+      {addExerciseDayIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-2xl bg-bg-card border border-white/10 bg-gradient-to-b from-[#12121a] to-[#0a0a0f] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-slide-up">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-white/5 flex justify-between items-center shrink-0">
+              <div>
+                <h4 className="font-heading font-extrabold text-lg text-white">
+                  Add Exercises to {routineResult?.week.find(d => d.dayIndex === addExerciseDayIndex)?.dayName} ({routineResult?.week.find(d => d.dayIndex === addExerciseDayIndex)?.label})
+                </h4>
+                <p className="text-xs text-text-secondary mt-0.5">Select the exercises you'd like to append to this training day.</p>
+              </div>
+              <button
+                onClick={() => { setAddExerciseDayIndex(null); setAddSearch(''); setAddSelectedIds([]); }}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white transition-colors cursor-pointer border border-white/5"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Search and Filters */}
+            <div className="p-4 bg-black/20 border-b border-white/5 space-y-3 shrink-0">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  value={addSearch}
+                  onChange={(e) => setAddSearch(e.target.value)}
+                  placeholder="Search exercises..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-accent-purple"
+                />
+              </div>
+
+              {/* Muscle Filter chips */}
+              <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 custom-scrollbar">
+                {['All', ...MUSCLE_GROUPS].map(muscle => {
+                  const active = addFilter === muscle;
+                  return (
+                    <button
+                      key={muscle}
+                      onClick={() => setAddFilter(muscle)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all shrink-0 cursor-pointer ${
+                        active
+                          ? 'bg-accent-purple/20 border-accent-purple text-white border'
+                          : 'bg-white/5 border-white/5 border text-text-secondary hover:text-white'
+                      }`}
+                    >
+                      {muscle}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Exercises List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+              {filteredAddExercises.length > 0 ? (
+                filteredAddExercises.map(ex => {
+                  const selected = addSelectedIds.includes(ex.id);
+                  return (
+                    <div
+                      key={ex.id}
+                      onClick={() => toggleAddSelection(ex.id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                        selected
+                          ? 'bg-accent-indigo/10 border-accent-indigo'
+                          : 'bg-white/2 border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="space-y-1 text-left">
+                        <span className="font-bold text-white text-sm block">{ex.name}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {ex.muscles.map(m => (
+                            <span key={m} className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-text-secondary border border-white/5">
+                              {m}
+                            </span>
+                          ))}
+                          <span className="text-[9px] text-text-muted">· {ex.equipment} · {ex.type}</span>
+                        </div>
+                      </div>
+
+                      {/* Check indicator */}
+                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                        selected
+                          ? 'bg-accent-indigo border-accent-indigo text-white'
+                          : 'border-white/20'
+                      }`}>
+                        {selected && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-xs text-text-muted">
+                  No exercises match your search query.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-white/5 bg-black/20 flex justify-between items-center shrink-0">
+              <span className="text-xs text-text-secondary">
+                {addSelectedIds.length} exercises selected
+              </span>
+              <button
+                onClick={handleConfirmAddSelection}
+                disabled={addSelectedIds.length === 0}
+                className={`px-5 py-2.5 rounded-lg text-xs font-bold shadow flex items-center gap-1 cursor-pointer transition-all ${
+                  addSelectedIds.length > 0
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white hover:opacity-90'
+                    : 'bg-white/5 text-text-muted border border-white/5 cursor-not-allowed'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" />
+                Add Selected
+              </button>
             </div>
 
           </div>

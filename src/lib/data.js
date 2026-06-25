@@ -4,7 +4,7 @@
 
 export const MUSCLE_GROUPS = [
   'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
-  'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core', 'Full Body'
+  'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs', 'Obliques', 'Core', 'Full Body'
 ];
 
 export const EQUIPMENT = [
@@ -136,14 +136,14 @@ export const EXERCISES = [
   { id: 'ca04', name: 'Single-Leg Calf Raise', muscles: ['Calves'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Rise up on one foot for an extra challenge on your calf.' },
 
   // ---- CORE ----
-  { id: 'co01', name: 'Plank', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Hold a straight-body position on your forearms and toes.' },
-  { id: 'co02', name: 'Hanging Leg Raise', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from a bar and raise your legs to 90 degrees.' },
-  { id: 'co03', name: 'Cable Woodchop', muscles: ['Core'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Rotate and chop a cable from high to low across your body.' },
-  { id: 'co04', name: 'Ab Wheel Rollout', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Roll an ab wheel forward from kneeling and pull back using your abs.' },
-  { id: 'co05', name: 'Russian Twist', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Sit in V position and twist side to side, optionally holding a weight.' },
-  { id: 'co06', name: 'Bicycle Crunch', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Alternate bringing elbows to opposite knees in a cycling motion.' },
-  { id: 'co07', name: 'Dead Bug', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Lie on your back and alternate extending opposite arm and leg.' },
-  { id: 'co08', name: 'Pallof Press', muscles: ['Core'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Press a cable handle away from your chest while resisting rotation.' },
+  { id: 'co01', name: 'Plank', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Hold a straight-body position on your forearms and toes.' },
+  { id: 'co02', name: 'Hanging Leg Raise', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from a bar and raise your legs to 90 degrees.' },
+  { id: 'co03', name: 'Cable Woodchop', muscles: ['Obliques'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Rotate and chop a cable from high to low across your body.' },
+  { id: 'co04', name: 'Ab Wheel Rollout', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Roll an ab wheel forward from kneeling and pull back using your abs.' },
+  { id: 'co05', name: 'Russian Twist', muscles: ['Obliques'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Sit in V position and twist side to side, optionally holding a weight.' },
+  { id: 'co06', name: 'Bicycle Crunch', muscles: ['Abs', 'Obliques'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Alternate bringing elbows to opposite knees in a cycling motion.' },
+  { id: 'co07', name: 'Dead Bug', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Lie on your back and alternate extending opposite arm and leg.' },
+  { id: 'co08', name: 'Pallof Press', muscles: ['Obliques'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Press a cable handle away from your chest while resisting rotation.' },
 
   // ---- FULL BODY ----
   { id: 'fb01', name: 'Burpees', muscles: ['Full Body'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Drop to the floor, do a push-up, jump up and repeat.' },
@@ -169,10 +169,10 @@ export const EXERCISES = [
   { id: 'h07', name: 'Kettlebell Romanian Deadlift', muscles: ['Hamstrings', 'Glutes'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Perform hip hinge RDL holding a heavy kettlebell.' },
   { id: 'g06', name: 'Cable Kickback', muscles: ['Glutes'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kick leg straight back against low cable resistance.' },
   { id: 'ca05', name: 'Calf Press on Leg Press', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Perform calf raises using the leg press sled.' },
-  { id: 'co09', name: 'Hanging Knee Raise', muscles: ['Core'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from bar and raise knees to chest.' },
-  { id: 'co10', name: 'Cable Crunch', muscles: ['Core'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kneel and crunch down using high rope attachment.' },
+  { id: 'co09', name: 'Hanging Knee Raise', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from bar and raise knees to chest.' },
+  { id: 'co10', name: 'Cable Crunch', muscles: ['Abs'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kneel and crunch down using high rope attachment.' },
   { id: 'fb07', name: 'Kettlebell Snatch', muscles: ['Full Body'], equipment: 'Kettlebell', difficulty: 3, type: 'compound', description: 'Swing kettlebell and pull it overhead in one fluid motion.' },
-  { id: 'fb08', name: 'Bear Crawls', muscles: ['Full Body', 'Core'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Crawling on hands and toes close to the ground.' },
+  { id: 'fb08', name: 'Bear Crawls', muscles: ['Full Body', 'Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Crawling on hands and toes close to the ground.' },
 
   // ---- POWERLIFTING & MAX STRENGTH ----
   { id: 'pl01', name: 'Barbell Box Squat', muscles: ['Quads', 'Glutes', 'Core'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Squat down to a box/bench and drive back up from a dead stop.' },

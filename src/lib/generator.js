@@ -71,7 +71,7 @@ function randomBetween(min, max) {
  * @param {string} params.goal - Selected training goal
  * @returns {Object} Generated workout
  */
-export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, equipment = [], goal = 'hypertrophy' }) {
+export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, equipment = [], goal = 'hypertrophy', profile = null }) {
   const goalCfg = SCIENTIFIC_GOAL_CONFIGS[goal] || SCIENTIFIC_GOAL_CONFIGS.hypertrophy;
 
   const targetSeconds = duration * 60;
@@ -183,11 +183,27 @@ export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, e
 
   selectedExercises.sort((a, b) => getExercisePriority(a) - getExercisePriority(b));
 
+  // Personalization based on profile
+  let adjustedTargetSets = targetSets;
+  let adjustedRest = goalCfg.rest;
+
+  if (profile) {
+    const level = profile.fitness_level?.toLowerCase();
+    if (level === 'beginner') {
+      adjustedTargetSets = Math.max(2, targetSets - 1);
+    } else if (level === 'advanced') {
+      adjustedTargetSets = Math.min(6, targetSets + 1);
+    }
+    if (profile.age && parseInt(profile.age) > 50) {
+      adjustedRest += 15; // extra recovery
+    }
+  }
+
   // Assign sets, reps, rest
   const exercises = selectedExercises.map(ex => {
-    const sets = targetSets;
+    const sets = adjustedTargetSets;
     const reps = randomBetween(goalCfg.repsRange[0], goalCfg.repsRange[1]);
-    const restTime = goalCfg.rest;
+    const restTime = adjustedRest;
     return { ...ex, sets, reps, rest: restTime };
   });
 

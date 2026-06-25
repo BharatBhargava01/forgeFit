@@ -7,6 +7,119 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [hoveredGroup, setHoveredGroup] = useState(null);
+
+  const muscleGroupsFront = [
+    { name: 'Chest', label: 'Chest', paths: ['M 100,52 L 82,54 L 80,72 L 100,74 Z', 'M 100,52 L 118,54 L 120,72 L 100,74 Z'] },
+    { name: 'Shoulders', label: 'Shoulders (Delts)', paths: ['M 80,54 L 70,62 L 76,76 L 82,68 Z', 'M 120,54 L 130,62 L 124,76 L 118,68 Z'] },
+    { name: 'Biceps', label: 'Biceps', paths: ['M 70,62 L 62,84 L 70,92 L 76,76 Z', 'M 130,62 L 138,84 L 130,92 L 124,76 Z'] },
+    { name: 'Abs', label: 'Abs (Rectus Abdominis)', paths: ['M 92,76 L 108,76 L 106,108 L 94,108 Z'] },
+    { name: 'Obliques', label: 'Obliques', paths: ['M 80,72 L 92,76 L 94,108 L 82,108 Z', 'M 120,72 L 108,76 L 106,108 L 118,108 Z'] },
+    { name: 'Quads', label: 'Quads', paths: ['M 78,122 L 96,122 L 93,170 L 76,164 Z', 'M 122,122 L 104,122 L 107,170 L 124,164 Z'] },
+    { name: 'Calves', label: 'Calves (Front)', paths: ['M 77,174 L 91,174 L 88,220 L 78,220 Z', 'M 123,174 L 109,174 L 112,220 L 122,220 Z'] },
+  ];
+
+  const muscleGroupsBack = [
+    { name: 'Shoulders', label: 'Shoulders (Rear Delts)', paths: ['M 280,54 L 270,62 L 276,76 L 282,68 Z', 'M 320,54 L 330,62 L 324,76 L 318,68 Z'] },
+    { name: 'Back', label: 'Back (Traps & Lats)', paths: ['M 300,52 L 282,54 L 282,108 L 300,108 Z', 'M 300,52 L 318,54 L 318,108 L 300,108 Z'] },
+    { name: 'Triceps', label: 'Triceps', paths: ['M 270,62 L 262,84 L 270,92 L 276,76 Z', 'M 330,62 L 338,84 L 330,92 L 324,76 Z'] },
+    { name: 'Glutes', label: 'Glutes', paths: ['M 280,108 L 300,110 L 300,132 L 278,126 Z', 'M 320,108 L 300,110 L 300,132 L 322,126 Z'] },
+    { name: 'Hamstrings', label: 'Hamstrings', paths: ['M 278,126 L 300,132 L 296,170 L 276,164 Z', 'M 322,126 L 300,132 L 304,170 L 324,164 Z'] },
+    { name: 'Calves', label: 'Calves (Back)', paths: ['M 277,174 L 291,174 L 288,220 L 278,220 Z', 'M 323,174 L 309,174 L 312,220 L 322,220 Z'] },
+  ];
+
+  const recentVolumes = useMemo(() => {
+    const volumes = {
+      Chest: 0, Back: 0, Shoulders: 0, Biceps: 0, Triceps: 0,
+      Quads: 0, Hamstrings: 0, Glutes: 0, Calves: 0, Abs: 0, Obliques: 0
+    };
+
+    if (!logs.length) return volumes;
+
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    logs.forEach(log => {
+      const logDate = new Date(log.loggedAt || log.date);
+      if (logDate >= fortyEightHoursAgo) {
+        if (log.abs_volume !== undefined) {
+          volumes.Chest += parseFloat(log.chest_volume) || 0;
+          volumes.Back += parseFloat(log.back_volume) || 0;
+          volumes.Shoulders += parseFloat(log.shoulders_volume) || 0;
+          volumes.Biceps += parseFloat(log.biceps_volume) || 0;
+          volumes.Triceps += parseFloat(log.triceps_volume) || 0;
+          volumes.Quads += parseFloat(log.quads_volume) || 0;
+          volumes.Hamstrings += parseFloat(log.hamstrings_volume) || 0;
+          volumes.Glutes += parseFloat(log.glutes_volume) || 0;
+          volumes.Calves += parseFloat(log.calves_volume) || 0;
+          volumes.Abs += parseFloat(log.abs_volume) || 0;
+          volumes.Obliques += parseFloat(log.obliques_volume) || 0;
+        } else {
+          if (log.exercises) {
+            log.exercises.forEach(ex => {
+              let exVolume = 0;
+              if (ex.sets) {
+                ex.sets.forEach(s => {
+                  if (s.completed) {
+                    const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
+                    const r = parseInt(s.reps) || 1;
+                    exVolume += w * r;
+                  }
+                });
+              }
+              if (ex.muscles) {
+                ex.muscles.forEach(m => {
+                  const muscle = m.toLowerCase();
+                  if (muscle === 'chest') volumes.Chest += exVolume;
+                  else if (muscle === 'back') volumes.Back += exVolume;
+                  else if (muscle === 'shoulders') volumes.Shoulders += exVolume;
+                  else if (muscle === 'biceps') volumes.Biceps += exVolume;
+                  else if (muscle === 'triceps') volumes.Triceps += exVolume;
+                  else if (muscle === 'quads') volumes.Quads += exVolume;
+                  else if (muscle === 'hamstrings') volumes.Hamstrings += exVolume;
+                  else if (muscle === 'glutes') volumes.Glutes += exVolume;
+                  else if (muscle === 'calves') volumes.Calves += exVolume;
+                  else if (muscle === 'abs') volumes.Abs += exVolume;
+                  else if (muscle === 'obliques') volumes.Obliques += exVolume;
+                  else if (muscle === 'core') {
+                    volumes.Abs += exVolume;
+                  }
+                });
+              }
+            });
+          }
+        }
+      }
+    });
+
+    return volumes;
+  }, [logs]);
+
+  const maxVal = useMemo(() => {
+    return Math.max(...Object.values(recentVolumes), 500);
+  }, [recentVolumes]);
+
+  const getMuscleStyle = (muscle) => {
+    const vol = recentVolumes[muscle] || 0;
+    if (vol === 0) {
+      return {
+        fill: 'rgba(255, 255, 255, 0.03)',
+        stroke: 'rgba(255, 255, 255, 0.08)',
+        transition: 'all 0.3s ease'
+      };
+    }
+    const ratio = Math.min(1, vol / maxVal);
+    const hue = Math.round(200 - ratio * 200);
+    const saturation = 80;
+    const lightness = Math.round(40 + ratio * 20);
+    return {
+      fill: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`,
+      stroke: `hsla(${hue}, ${saturation}%, ${lightness}%, 1)`,
+      filter: 'drop-shadow(0 0 4px rgba(124, 58, 237, 0.15))',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease'
+    };
+  };
 
   const fetchLogs = async () => {
     try {
@@ -453,52 +566,165 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
         </div>
       </div>
 
-      {/* Charts Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Layout - Split 12-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Trend Volume Chart */}
-        <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="font-heading font-bold text-base text-white">Recent Volume Trend</h3>
-            <p className="text-xs text-text-muted mt-0.5">Total weight load lifted in your past 7 training sessions.</p>
+        {/* Left Side: Recent Volume & Muscle Focus (7/12) */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* Trend Volume Chart */}
+          <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4 flex flex-col justify-between h-[280px]">
+            <div>
+              <h3 className="font-heading font-bold text-base text-white">Recent Volume Trend</h3>
+              <p className="text-xs text-text-muted mt-0.5">Total weight load lifted in your past 7 training sessions.</p>
+            </div>
+            <div className="h-[200px] w-full flex items-center justify-center">
+              {renderSVGChart()}
+            </div>
           </div>
-          <div className="h-[200px] w-full flex items-center justify-center">
-            {renderSVGChart()}
+
+          {/* Muscle Focus Breakdown */}
+          <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
+            <div>
+              <h3 className="font-heading font-bold text-base text-white">Muscle Focus Breakdown</h3>
+              <p className="text-xs text-text-muted mt-0.5">Distribution frequency based on sets logged per target muscle.</p>
+            </div>
+
+            <div className="space-y-3.5 overflow-y-auto max-h-[220px] pr-1 custom-scrollbar">
+              {metrics && Object.keys(metrics.muscleFrequency).length > 0 ? (
+                Object.entries(metrics.muscleFrequency)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([muscle, freq]) => {
+                    const maxFreq = Math.max(...Object.values(metrics.muscleFrequency));
+                    const percentage = Math.round((freq / maxFreq) * 100);
+                    return (
+                      <div key={muscle} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-white">{muscle}</span>
+                          <span className="text-text-secondary">{freq} sets</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <div className="text-center py-8 text-xs text-text-muted">No muscle breakdown available.</div>
+              )}
+            </div>
           </div>
+
         </div>
 
-        {/* Muscle Distribution Breakdown */}
-        <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
+        {/* Right Side: Interactive Heatmap (5/12) */}
+        <div className="lg:col-span-5 glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col justify-between min-h-[500px]">
           <div>
-            <h3 className="font-heading font-bold text-base text-white">Muscle Focus Breakdown</h3>
-            <p className="text-xs text-text-muted mt-0.5">Distribution frequency based on sets logged per target muscle.</p>
+            <h3 className="font-heading font-bold text-base text-white">Interactive Muscle Heatmap</h3>
+            <p className="text-xs text-text-muted mt-0.5">Cumulative volume (kg) logged per muscle group over the past 48 hours.</p>
           </div>
 
-          <div className="space-y-3.5 overflow-y-auto max-h-[220px] pr-1">
-            {metrics && Object.keys(metrics.muscleFrequency).length > 0 ? (
-              Object.entries(metrics.muscleFrequency)
-                .sort((a, b) => b[1] - a[1])
-                .map(([muscle, freq]) => {
-                  const maxFreq = Math.max(...Object.values(metrics.muscleFrequency));
-                  const percentage = Math.round((freq / maxFreq) * 100);
-                  return (
-                    <div key={muscle} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold">
-                        <span className="text-white">{muscle}</span>
-                        <span className="text-text-secondary">{freq} sets</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <div className="text-center py-8 text-xs text-text-muted">No muscle breakdown available.</div>
-            )}
+          <div className="flex-grow flex items-center justify-center py-4">
+            <svg viewBox="0 0 400 240" className="w-full max-h-[320px] select-none">
+              {/* STATIC ELEMENTS - FRONT */}
+              <circle cx="100" cy="30" r="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="97,40 103,40 102,52 98,52" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="94,108 106,108 105,122 95,122" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="78,220 86,220 86,228 74,228" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="122,220 114,220 114,228 126,228" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+
+              {/* STATIC ELEMENTS - BACK */}
+              <circle cx="300" cy="30" r="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="297,40 303,40 302,52 298,52" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="294,108 306,108 305,126 295,126" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="278,220 286,220 286,228 274,228" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <polygon points="322,220 314,220 314,228 326,228" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+
+              {/* Labels FRONT & BACK */}
+              <text x="100" y="235" textAnchor="middle" fill="#a0a0b8" fontSize="8" fontWeight="bold" opacity="0.6">FRONT VIEW</text>
+              <text x="300" y="235" textAnchor="middle" fill="#a0a0b8" fontSize="8" fontWeight="bold" opacity="0.6">BACK VIEW</text>
+
+              {/* INTERACTIVE MUSCLES FRONT */}
+              {muscleGroupsFront.map(mg => {
+                const activeStyle = getMuscleStyle(mg.name);
+                const isHovered = hoveredGroup === mg.name;
+                return (
+                  <g 
+                    key={mg.name}
+                    onMouseEnter={() => setHoveredGroup(mg.name)}
+                    onMouseLeave={() => setHoveredGroup(null)}
+                    className="cursor-pointer"
+                  >
+                    {mg.paths.map((p, pIdx) => (
+                      <path
+                        key={pIdx}
+                        d={p}
+                        style={{
+                          ...activeStyle,
+                          ...(isHovered ? {
+                            fillOpacity: 0.95,
+                            strokeWidth: 2,
+                            stroke: '#ffffff'
+                          } : {})
+                        }}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
+
+              {/* INTERACTIVE MUSCLES BACK */}
+              {muscleGroupsBack.map(mg => {
+                const activeStyle = getMuscleStyle(mg.name);
+                const isHovered = hoveredGroup === mg.name;
+                return (
+                  <g 
+                    key={mg.name}
+                    onMouseEnter={() => setHoveredGroup(mg.name)}
+                    onMouseLeave={() => setHoveredGroup(null)}
+                    className="cursor-pointer"
+                  >
+                    {mg.paths.map((p, pIdx) => (
+                      <path
+                        key={pIdx}
+                        d={p}
+                        style={{
+                          ...activeStyle,
+                          ...(isHovered ? {
+                            fillOpacity: 0.95,
+                            strokeWidth: 2,
+                            stroke: '#ffffff'
+                          } : {})
+                        }}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Tooltip & Scale Legend */}
+          <div className="w-full mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+            <div className="text-[10px] text-text-secondary">
+              {hoveredGroup ? (
+                <span className="font-semibold text-white animate-fade-in flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-accent-purple animate-ping"></span>
+                  {hoveredGroup}: <strong className="text-accent-cyan">{recentVolumes[hoveredGroup]?.toLocaleString() || 0} kg</strong>
+                </span>
+              ) : (
+                <span className="text-text-muted">Hover muscles to inspect 48h volume</span>
+              )}
+            </div>
+            {/* Heat Scale Legend */}
+            <div className="flex items-center gap-1 text-[9px] text-text-muted">
+              <span>Cold</span>
+              <div className="w-16 h-2 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-red-500"></div>
+              <span>Hot</span>
+            </div>
           </div>
         </div>
 

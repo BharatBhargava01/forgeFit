@@ -1,4 +1,4 @@
-const CACHE_NAME = 'forgefit-v5';
+const CACHE_NAME = 'forgefit-v7';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -134,6 +134,11 @@ self.addEventListener('periodicsync', event => {
 
 async function checkMotivationInServiceWorker() {
   try {
+    // Check for notification permission
+    if (self.Notification && self.Notification.permission !== 'granted') {
+      return;
+    }
+
     const cache = await caches.open('forgefit-settings-cache');
     const response = await cache.match('/offline-settings.json');
     if (!response) return;
@@ -144,16 +149,21 @@ async function checkMotivationInServiceWorker() {
     const todayStr = new Date().toDateString();
     const currentHour = new Date().getHours();
 
-    // Check if we should notify at this hour
     const hours = settings.hours || [8, 12, 15, 18, 21];
-    if (!hours.includes(currentHour)) return;
 
-    // Check if we already notified for this hour today in the SW cache
+    // Find all scheduled hours that have already passed (or are equal to current hour) today
+    const passedHours = hours.filter(h => h <= currentHour);
+    if (passedHours.length === 0) return;
+
+    // Target the latest passed scheduled hour
+    const targetHour = Math.max(...passedHours);
+    const targetKey = `${todayStr}:${targetHour}`;
+
+    // Check if we already notified for this target hour today
     const lastKeyResponse = await cache.match('/last-notification-hour.json');
-    const currentKey = `${todayStr}:${currentHour}`;
     if (lastKeyResponse) {
       const lastKeyData = await lastKeyResponse.json();
-      if (lastKeyData.key === currentKey) return;
+      if (lastKeyData.key === targetKey) return;
     }
 
     // Pick a random quote
@@ -183,7 +193,7 @@ async function checkMotivationInServiceWorker() {
     // Save the notification hour key to cache to prevent duplicates
     await cache.put(
       new Request('/last-notification-hour.json'),
-      new Response(JSON.stringify({ key: currentKey }))
+      new Response(JSON.stringify({ key: targetKey }))
     );
   } catch (e) {
     console.error('[SW Motivation Check] Error:', e);

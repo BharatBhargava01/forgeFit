@@ -99,12 +99,26 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'local';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}';
 
       -- Add user_id column if not exists to all tables
       ALTER TABLE workouts ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE routines ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE custom_exercises ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+
+      -- Add specific muscle volume columns to workout_logs
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS chest_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS back_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS shoulders_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS biceps_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS triceps_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS quads_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS hamstrings_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS glutes_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS calves_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS abs_volume NUMERIC DEFAULT 0;
+      ALTER TABLE workout_logs ADD COLUMN IF NOT EXISTS obliques_volume NUMERIC DEFAULT 0;
 
       -- Delete all previously stored anonymous data (where user_id is NULL)
       DELETE FROM workouts WHERE user_id IS NULL;

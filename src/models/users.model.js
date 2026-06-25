@@ -5,10 +5,10 @@ class UsersModel {
   static async create({ name, email, passwordHash, avatarUrl, provider = 'local', providerId = null }) {
     const id = nanoid();
     const result = await pool.query(
-      `INSERT INTO users (id, name, email, password_hash, avatar_url, provider, provider_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, email, avatar_url, provider, created_at`,
-      [id, name, email, passwordHash, avatarUrl, provider, providerId]
+      `INSERT INTO users (id, name, email, password_hash, avatar_url, provider, provider_id, profile)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, name, email, avatar_url, provider, profile, created_at`,
+      [id, name, email, passwordHash, avatarUrl, provider, providerId, '{}']
     );
     return result.rows[0];
   }
@@ -20,8 +20,19 @@ class UsersModel {
 
   static async findById(id) {
     const result = await pool.query(
-      'SELECT id, name, email, avatar_url, provider, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, avatar_url, provider, profile, created_at FROM users WHERE id = $1',
       [id]
+    );
+    return result.rows[0];
+  }
+
+  static async updateProfile(id, profile) {
+    const result = await pool.query(
+      `UPDATE users
+       SET profile = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, email, avatar_url, provider, profile, created_at`,
+      [JSON.stringify(profile), id]
     );
     return result.rows[0];
   }

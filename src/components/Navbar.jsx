@@ -95,10 +95,21 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
                       
                       <button
                         onClick={() => {
-                          onSyncClick();
+                          handleLinkClick('profile');
                           setUserMenuOpen(false);
                         }}
                         className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 cursor-pointer text-left"
+                      >
+                        <span className="w-3.5 h-3.5 flex items-center justify-center text-accent-purple text-xs">👤</span>
+                        View Fitness Profile
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          onSyncClick();
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 cursor-pointer text-left mt-1"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-accent-cyan" />
                         Sync Offline Data
@@ -183,10 +194,19 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
                   
                   <button
                     onClick={() => {
+                      handleLinkClick('profile');
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-white flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    👤 View Fitness Profile
+                  </button>
+
+                  <button
+                    onClick={() => {
                       onSyncClick();
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full py-2.5 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-white flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-white flex items-center justify-center gap-2 cursor-pointer mt-2"
                   >
                     <RefreshCw className="w-4 h-4 text-accent-cyan" />
                     Sync Offline Data

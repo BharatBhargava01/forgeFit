@@ -193,6 +193,19 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
     }
   }, [prefilledMuscles]);
 
+  useEffect(() => {
+    if (user && user.profile) {
+      if (user.profile.goal) {
+        setGoal(user.profile.goal);
+      }
+      if (user.profile.fitness_level) {
+        const levelMap = { beginner: 1, intermediate: 2, advanced: 3 };
+        const levelVal = levelMap[user.profile.fitness_level.toLowerCase()];
+        if (levelVal) setDifficulty(levelVal);
+      }
+    }
+  }, [user]);
+
   const durationOptions = [15, 30, 45, 60, 90];
   const difficultyLabels = { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' };
 
@@ -223,6 +236,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
       duration,
       equipment: selectedEquipment,
       goal,
+      profile: user?.profile || null,
     };
 
     if (useAI) {

@@ -38,6 +38,7 @@ export async function POST(request) {
       email: user.email,
       avatar_url: user.avatar_url,
       provider: user.provider,
+      profile: user.profile,
       created_at: user.created_at,
     };
     

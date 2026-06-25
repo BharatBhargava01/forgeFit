@@ -236,6 +236,50 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
         </div>
       </div>
 
+      {/* Sticky Rest Timer stuck below navbar */}
+      {restOpen && (
+        <div className="sticky top-[72px] z-40 w-full mb-6 animate-slide-down">
+          <div className="glass-card rounded-2xl p-4 border border-accent-purple/35 bg-[#12121a]/95 backdrop-blur-md shadow-xl shadow-accent-purple/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center text-accent-purple shrink-0 text-xl animate-pulse">
+                ⏳
+              </div>
+              <div className="text-left flex-grow">
+                <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Rest Timer Active</span>
+                <div className="w-32 sm:w-48 h-1.5 rounded-full bg-white/5 overflow-hidden mt-1">
+                  <div
+                    className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple transition-all duration-1000 ease-linear"
+                    style={{ width: `${(restSeconds / restTotal) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="font-heading font-black text-3xl text-white tracking-widest leading-none flex items-baseline">
+                {restSeconds}
+                <span className="text-xs text-text-secondary ml-0.5">s</span>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAddRestTime(30)}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  ➕ 30s
+                </button>
+                <button
+                  onClick={handleSkipRest}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-bold text-xs shadow transition-all cursor-pointer"
+                >
+                  Skip ⏭️
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Exercises Log Grid */}
       <div className="space-y-6">
         {loggedExercises.map((ex, exIdx) => (
@@ -372,46 +416,6 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
           Finish Workout
         </button>
       </div>
-
-      {/* FLOATING REST TIMER OVERLAY */}
-      {restOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-sm glass-card border border-white/10 bg-[#12121a] rounded-2xl p-6 text-center shadow-2xl space-y-5 animate-slide-up">
-            
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted uppercase tracking-wider font-bold">Resting...</span>
-              <h4 className="font-heading font-black text-5xl text-white tracking-widest animate-pulse-glow">
-                {restSeconds}s
-              </h4>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple transition-all duration-1000 ease-linear"
-                style={{ width: `${(restSeconds / restTotal) * 100}%` }}
-              ></div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => handleAddRestTime(30)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
-              >
-                ➕ 30s
-              </button>
-              <button
-                onClick={handleSkipRest}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-bold text-xs shadow transition-all cursor-pointer"
-              >
-                Skip ⏭️
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

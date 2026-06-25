@@ -13,10 +13,13 @@ import SavedTab from '@/components/SavedTab';
 import { setCustomExercisesCache } from '@/lib/data';
 import { getCustomExercises, syncOfflineData } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
+import ProfileTab from '@/components/ProfileTab';
+import ProfileSetupModal from '@/components/ProfileSetupModal';
 
 export default function MainPage() {
   const [user, setUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [motivationEnabled, setMotivationEnabled] = useState(false);
@@ -29,6 +32,16 @@ export default function MainPage() {
 
   // React-based toast notifications state
   const [toasts, setToasts] = useState([]);
+
+  const needsProfileSetup = !!(user && (!user.profile || !user.profile.age || !user.profile.weight || !user.profile.height));
+
+  useEffect(() => {
+    if (needsProfileSetup) {
+      setWizardOpen(true);
+    } else {
+      setWizardOpen(false);
+    }
+  }, [user]);
 
   const showToast = (message, type = 'success') => {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -149,7 +162,7 @@ export default function MainPage() {
     }
   };
 
-  const checkDailyMotivation = () => {
+  const checkDailyMotivation = async () => {
     if (typeof window === 'undefined') return;
     
     const optedIn = localStorage.getItem('wg_motivation_enabled') === 'true';
@@ -169,6 +182,31 @@ export default function MainPage() {
     const lastDate = localStorage.getItem('wg_last_motivation_date');
     const lastHourKey = localStorage.getItem('wg_last_motivation_hour_key');
     const currentHourKey = `${todayStr}:${currentHour}`;
+
+    const passedHours = hours.filter(h => h <= currentHour);
+    if (passedHours.length === 0) return;
+
+    const targetHour = Math.max(...passedHours);
+    const targetKey = `${todayStr}:${targetHour}`;
+
+    // Share already-notified state with the Service Worker via cache
+    let alreadyNotified = false;
+    if ('caches' in window) {
+      try {
+        const cache = await caches.open('forgefit-settings-cache');
+        const lastKeyResponse = await cache.match('/last-notification-hour.json');
+        if (lastKeyResponse) {
+          const lastKeyData = await lastKeyResponse.json();
+          if (lastKeyData.key === targetKey) {
+            alreadyNotified = true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to check notification cache:', e);
+      }
+    }
+
+    if (alreadyNotified) return;
 
     let shouldNotify = false;
 
@@ -221,6 +259,19 @@ export default function MainPage() {
 
       localStorage.setItem('wg_last_motivation_date', todayStr);
       localStorage.setItem('wg_last_motivation_hour_key', currentHourKey);
+
+      // Save to cache as well so the Service Worker knows we notified!
+      if ('caches' in window) {
+        try {
+          const cache = await caches.open('forgefit-settings-cache');
+          await cache.put(
+            new Request('/last-notification-hour.json'),
+            new Response(JSON.stringify({ key: targetKey }))
+          );
+        } catch (e) {
+          console.warn('Failed to save notification cache:', e);
+        }
+      }
     }
   };
 
@@ -717,6 +768,15 @@ export default function MainPage() {
                 showToast={showToast}
               />
             )}
+
+            {currentPage === 'profile' && (
+              <ProfileTab
+                key={user ? user.id : 'guest'}
+                user={user}
+                onUpdateUser={(updated) => setUser(updated)}
+                showToast={showToast}
+              />
+            )}
           </>
         )}
 
@@ -757,6 +817,15 @@ export default function MainPage() {
           }, 500);
         }}
         showToast={showToast}
+      />
+
+      {/* Onboarding Profile Setup Modal */}
+      <ProfileSetupModal
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onSaveSuccess={(userData) => setUser(userData)}
+        showToast={showToast}
+        user={user}
       />
 
     </div>
