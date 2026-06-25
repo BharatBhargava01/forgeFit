@@ -64,6 +64,11 @@ export const EXERCISES = [
   { id: 'c07', name: 'Chest Dips', muscles: ['Chest', 'Triceps'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Lean forward on dip bars and lower your body, pressing back up.' },
   { id: 'c08', name: 'Machine Chest Press', muscles: ['Chest', 'Triceps'], equipment: 'Machine', difficulty: 1, type: 'compound', description: 'Push handles forward on a chest press machine.' },
   { id: 'c09', name: 'Pec Deck Machine', muscles: ['Chest'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Squeeze pads together using the pec deck machine.' },
+  { id: 'c10', name: 'Decline Dumbbell Press', muscles: ['Chest', 'Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Press dumbbells on a decline bench to target lower chest.' },
+  { id: 'c11', name: 'Incline Cable Flyes', muscles: ['Chest'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Bring cables together from low pulleys on an incline bench.' },
+  { id: 'pl02', name: 'Barbell Floor Press', muscles: ['Chest', 'Triceps', 'Shoulders'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Lie on the floor and bench press, eliminating lower body drive.' },
+  { id: 'c12', name: 'Guillotine Press', muscles: ['Chest'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Bench press with barbell lowered to neck level to emphasize upper chest stretch.' },
+  { id: 'c13', name: 'Svend Press', muscles: ['Chest'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Press two plates or a dumbbell together in front of your chest to contract pectorals.' },
 
   // ---- BACK ----
   { id: 'b01', name: 'Barbell Deadlift', muscles: ['Back', 'Hamstrings', 'Glutes'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Lift a loaded barbell from the floor by extending your hips and knees.' },
@@ -75,6 +80,11 @@ export const EXERCISES = [
   { id: 'b07', name: 'T-Bar Row', muscles: ['Back'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Straddle a landmine barbell and row it toward your chest.' },
   { id: 'b08', name: 'Face Pulls', muscles: ['Back', 'Shoulders'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Pull a rope attachment toward your face at head height.' },
   { id: 'b09', name: 'Chin-Ups', muscles: ['Back', 'Biceps'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Pull yourself up with an underhand grip, focusing on biceps.' },
+  { id: 'b10', name: 'Neutral Grip Pull-Ups', muscles: ['Back', 'Biceps'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Pull up using neutral grip handles to target lats.' },
+  { id: 'b11', name: 'Dumbbell Pullover', muscles: ['Back', 'Chest'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Lie across bench and lower dumbbell behind head, keeping arms straight.' },
+  { id: 'pl03', name: 'Deficit Deadlift', muscles: ['Back', 'Hamstrings', 'Glutes'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Perform a deadlift while standing on an elevated platform for increased range of motion.' },
+  { id: 'b12', name: 'Straight-Arm Pulldown', muscles: ['Back'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Pull a cable bar attachment down to thighs with locked arms to isolate lats.' },
+  { id: 'b13', name: 'Kettlebell Gorilla Row', muscles: ['Back', 'Core'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Perform alternating rows from a deep hinge position with kettlebells resting on the floor.' },
 
   // ---- SHOULDERS ----
   { id: 's01', name: 'Overhead Press', muscles: ['Shoulders', 'Triceps'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Press a barbell overhead from shoulder height to full lockout.' },
@@ -85,6 +95,11 @@ export const EXERCISES = [
   { id: 's06', name: 'Arnold Press', muscles: ['Shoulders', 'Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Rotate dumbbells from in front of your face to overhead.' },
   { id: 's07', name: 'Cable Lateral Raise', muscles: ['Shoulders'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Raise arm to the side using a low cable attachment.' },
   { id: 's08', name: 'Upright Row', muscles: ['Shoulders', 'Biceps'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Pull a barbell up along your body to chin height with elbows out.' },
+  { id: 's09', name: 'Dumbbell Rear Delt Fly', muscles: ['Shoulders', 'Back'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Bend over and raise dumbbells to the sides, targeting rear delts.' },
+  { id: 's10', name: 'Cable Y-Raise', muscles: ['Shoulders'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Pull low cables diagonally up to form a Y shape, targeting lateral delts.' },
+  { id: 'pl04', name: 'Barbell Pin Press', muscles: ['Shoulders', 'Triceps'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Press the barbell from a resting position on safety pins in a rack.' },
+  { id: 's11', name: 'Cable Lu Raises', muscles: ['Shoulders'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Lateral raise from thighs all the way overhead with palms facing up.' },
+  { id: 's12', name: 'Dumbbell Cuban Press', muscles: ['Shoulders'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Upright row, rotate shoulders externally, press overhead, reverse.' },
 
   // ---- BICEPS ----
   { id: 'bi01', name: 'Barbell Curl', muscles: ['Biceps'], equipment: 'Barbell', difficulty: 1, type: 'isolation', description: 'Curl a barbell from hip level to shoulder height.' },
@@ -94,6 +109,10 @@ export const EXERCISES = [
   { id: 'bi05', name: 'Concentration Curl', muscles: ['Biceps'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Curl a dumbbell while bracing your elbow on your inner thigh.' },
   { id: 'bi06', name: 'Preacher Curl', muscles: ['Biceps'], equipment: 'Barbell', difficulty: 1, type: 'isolation', description: 'Curl a barbell on a preacher bench for strict form.' },
   { id: 'bi07', name: 'Spider Curl', muscles: ['Biceps'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Curl dumbbells while lying face-down on an incline bench.' },
+  { id: 'bi08', name: 'Zottman Curl', muscles: ['Biceps', 'Core'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Curl dumbbells, rotate palms down, and lower slowly.' },
+  { id: 'bi09', name: 'Cable Rope Hammer Curl', muscles: ['Biceps'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Curl a rope attachment with a neutral grip.' },
+  { id: 'bi10', name: 'Drag Curl', muscles: ['Biceps'], equipment: 'Barbell', difficulty: 2, type: 'isolation', description: 'Curl barbell up by pulling elbows back, dragging the bar up your torso.' },
+  { id: 'bi11', name: 'Waiter Curl', muscles: ['Biceps'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Hold dumbbell by the top bell with flat palms facing up and curl it.' },
 
   // ---- TRICEPS ----
   { id: 'tr01', name: 'Tricep Pushdown', muscles: ['Triceps'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Push a cable attachment downward by extending your elbows.' },
@@ -103,6 +122,10 @@ export const EXERCISES = [
   { id: 'tr05', name: 'Diamond Push-Ups', muscles: ['Triceps', 'Chest'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Perform push-ups with hands together in a diamond shape.' },
   { id: 'tr06', name: 'Cable Overhead Extension', muscles: ['Triceps'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Face away from cable and extend the rope overhead.' },
   { id: 'tr07', name: 'Tricep Kickback', muscles: ['Triceps'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Extend a dumbbell backward while hinged forward.' },
+  { id: 'tr08', name: 'Bench Dips', muscles: ['Triceps', 'Chest'], equipment: 'Bodyweight', difficulty: 1, type: 'compound', description: 'Lower body off bench and press back up using triceps.' },
+  { id: 'tr09', name: 'Lying Dumbbell Tricep Extension', muscles: ['Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Extend dumbbells upward from forehead while lying flat.' },
+  { id: 'tr10', name: 'JM Press', muscles: ['Triceps'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Hybrid of close-grip bench press and skull crusher, lowering bar to throat.' },
+  { id: 'tr11', name: 'Dumbbell Tate Press', muscles: ['Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Lie flat, lower dumbbells in toward chest with elbows flared, then press up.' },
 
   // ---- QUADS ----
   { id: 'q01', name: 'Barbell Back Squat', muscles: ['Quads', 'Glutes'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Squat down with a barbell on your upper back until thighs are parallel.' },
@@ -113,6 +136,11 @@ export const EXERCISES = [
   { id: 'q06', name: 'Walking Lunges', muscles: ['Quads', 'Glutes'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Step forward into alternating lunges while holding dumbbells.' },
   { id: 'q07', name: 'Goblet Squat', muscles: ['Quads', 'Glutes'], equipment: 'Dumbbell', difficulty: 1, type: 'compound', description: 'Hold a dumbbell at your chest and squat down.' },
   { id: 'q08', name: 'Hack Squat', muscles: ['Quads'], equipment: 'Machine', difficulty: 2, type: 'compound', description: 'Squat on a hack squat machine for targeted quad work.' },
+  { id: 'q09', name: 'Sissy Squat', muscles: ['Quads'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Lean back from knees holding vertical support, pushing quads.' },
+  { id: 'q10', name: 'Dumbbell Step-Ups', muscles: ['Quads', 'Glutes'], equipment: 'Dumbbell', difficulty: 1, type: 'compound', description: 'Step onto a box or platform holding dumbbells at sides.' },
+  { id: 'pl01', name: 'Barbell Box Squat', muscles: ['Quads', 'Glutes', 'Core'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Squat down to a box/bench and drive back up from a dead stop.' },
+  { id: 'q11', name: 'Cyclist Squat', muscles: ['Quads'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Squat with heels highly elevated (on a wedge) to maximize quad load.' },
+  { id: 'q12', name: 'Leg Press Single-Leg', muscles: ['Quads', 'Glutes'], equipment: 'Machine', difficulty: 2, type: 'compound', description: 'Perform single-leg presses to isolate unilateral strength and balance.' },
 
   // ---- HAMSTRINGS ----
   { id: 'h01', name: 'Romanian Deadlift', muscles: ['Hamstrings', 'Glutes'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Hinge at the hips lowering the barbell along your legs with slight knee bend.' },
@@ -121,6 +149,9 @@ export const EXERCISES = [
   { id: 'h04', name: 'Stiff-Leg Deadlift', muscles: ['Hamstrings', 'Glutes'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Hinge at hips with straight legs, lowering dumbbells toward the floor.' },
   { id: 'h05', name: 'Nordic Hamstring Curl', muscles: ['Hamstrings'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Lower your body forward from a kneeling position using hamstring strength.' },
   { id: 'h06', name: 'Good Mornings', muscles: ['Hamstrings', 'Back'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Bow forward with a barbell on your back then stand upright.' },
+  { id: 'h07', name: 'Kettlebell Romanian Deadlift', muscles: ['Hamstrings', 'Glutes'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Perform hip hinge RDL holding a heavy kettlebell.' },
+  { id: 'h08', name: 'Slider Hamstring Curls', muscles: ['Hamstrings'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Lie on back, place heels on sliders, lift hips, and curl heels to glutes.' },
+  { id: 'h09', name: 'Dumbbell Deficit RDL', muscles: ['Hamstrings', 'Glutes'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Romanian deadlift standing on a block to extend hamstring stretch.' },
 
   // ---- GLUTES ----
   { id: 'g01', name: 'Hip Thrust', muscles: ['Glutes', 'Hamstrings'], equipment: 'Barbell', difficulty: 2, type: 'compound', description: 'Drive hips upward with upper back on a bench and barbell across hips.' },
@@ -128,12 +159,18 @@ export const EXERCISES = [
   { id: 'g03', name: 'Cable Pull-Through', muscles: ['Glutes', 'Hamstrings'], equipment: 'Cable', difficulty: 1, type: 'compound', description: 'Pull a cable between your legs by extending hips forward.' },
   { id: 'g04', name: 'Kettlebell Swing', muscles: ['Glutes', 'Hamstrings', 'Core'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Swing a kettlebell between your legs and drive it to chest height.' },
   { id: 'g05', name: 'Sumo Deadlift', muscles: ['Glutes', 'Quads', 'Back'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Deadlift with a wide stance and hands inside the knees.' },
+  { id: 'g06', name: 'Cable Kickback', muscles: ['Glutes'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kick leg straight back against low cable resistance.' },
+  { id: 'g07', name: 'Frog Pumps', muscles: ['Glutes'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Lie on back, place soles of feet together near glutes, and lift hips.' },
+  { id: 'g08', name: 'Dumbbell Curtsy Lunge', muscles: ['Glutes', 'Quads'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Lunge by stepping one foot diagonally behind the other to load the glute medius.' },
 
   // ---- CALVES ----
   { id: 'ca01', name: 'Standing Calf Raise', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Rise up on your toes on a standing calf raise machine.' },
   { id: 'ca02', name: 'Seated Calf Raise', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Raise your heels while seated with weight on your knees.' },
   { id: 'ca03', name: 'Donkey Calf Raise', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Perform calf raises while bent forward on a donkey calf machine.' },
   { id: 'ca04', name: 'Single-Leg Calf Raise', muscles: ['Calves'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Rise up on one foot for an extra challenge on your calf.' },
+  { id: 'ca05', name: 'Calf Press on Leg Press', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Perform calf raises using the leg press sled.' },
+  { id: 'ca06', name: 'Barbell Seated Calf Raise', muscles: ['Calves'], equipment: 'Barbell', difficulty: 1, type: 'isolation', description: 'Perform calf raises while seated on a bench with a barbell across thighs.' },
+  { id: 'ca07', name: 'Tibialis Raise', muscles: ['Calves'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Lean against a wall and pull toes upward to strengthen the front of the shin.' },
 
   // ---- CORE ----
   { id: 'co01', name: 'Plank', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Hold a straight-body position on your forearms and toes.' },
@@ -144,6 +181,10 @@ export const EXERCISES = [
   { id: 'co06', name: 'Bicycle Crunch', muscles: ['Abs', 'Obliques'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Alternate bringing elbows to opposite knees in a cycling motion.' },
   { id: 'co07', name: 'Dead Bug', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Lie on your back and alternate extending opposite arm and leg.' },
   { id: 'co08', name: 'Pallof Press', muscles: ['Obliques'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Press a cable handle away from your chest while resisting rotation.' },
+  { id: 'co09', name: 'Hanging Knee Raise', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from bar and raise knees to chest.' },
+  { id: 'co10', name: 'Cable Crunch', muscles: ['Abs'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kneel and crunch down using high rope attachment.' },
+  { id: 'co11', name: 'Hanging Windshield Wipers', muscles: ['Obliques', 'Abs'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Hang from a bar, lift legs straight up, and rotate them side to side.' },
+  { id: 'co12', name: 'Barbell Rollout', muscles: ['Abs'], equipment: 'Barbell', difficulty: 3, type: 'isolation', description: 'Roll out a loaded barbell from kneeling, keeping abs braced.' },
 
   // ---- FULL BODY ----
   { id: 'fb01', name: 'Burpees', muscles: ['Full Body'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Drop to the floor, do a push-up, jump up and repeat.' },
@@ -152,40 +193,18 @@ export const EXERCISES = [
   { id: 'fb04', name: 'Turkish Get-Up', muscles: ['Full Body'], equipment: 'Kettlebell', difficulty: 3, type: 'compound', description: 'Rise from lying to standing while holding a kettlebell overhead.' },
   { id: 'fb05', name: 'Man Makers', muscles: ['Full Body'], equipment: 'Dumbbell', difficulty: 3, type: 'compound', description: 'Combine a push-up, row, squat, and press into one movement.' },
   { id: 'fb06', name: 'Battle Ropes', muscles: ['Full Body'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Slam heavy ropes in alternating or simultaneous waves.' },
-
-  // ---- NEW ADDITIONS ----
-  { id: 'c10', name: 'Decline Dumbbell Press', muscles: ['Chest', 'Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Press dumbbells on a decline bench to target lower chest.' },
-  { id: 'c11', name: 'Incline Cable Flyes', muscles: ['Chest'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Bring cables together from low pulleys on an incline bench.' },
-  { id: 'b10', name: 'Neutral Grip Pull-Ups', muscles: ['Back', 'Biceps'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Pull up using neutral grip handles to target lats.' },
-  { id: 'b11', name: 'Dumbbell Pullover', muscles: ['Back', 'Chest'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Lie across bench and lower dumbbell behind head, keeping arms straight.' },
-  { id: 's09', name: 'Dumbbell Rear Delt Fly', muscles: ['Shoulders', 'Back'], equipment: 'Dumbbell', difficulty: 1, type: 'isolation', description: 'Bend over and raise dumbbells to the sides, targeting rear delts.' },
-  { id: 's10', name: 'Cable Y-Raise', muscles: ['Shoulders'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Pull low cables diagonally up to form a Y shape, targeting lateral delts.' },
-  { id: 'bi08', name: 'Zottman Curl', muscles: ['Biceps', 'Core'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Curl dumbbells, rotate palms down, and lower slowly.' },
-  { id: 'bi09', name: 'Cable Rope Hammer Curl', muscles: ['Biceps'], equipment: 'Cable', difficulty: 1, type: 'isolation', description: 'Curl a rope attachment with a neutral grip.' },
-  { id: 'tr08', name: 'Bench Dips', muscles: ['Triceps', 'Chest'], equipment: 'Bodyweight', difficulty: 1, type: 'compound', description: 'Lower body off bench and press back up using triceps.' },
-  { id: 'tr09', name: 'Lying Dumbbell Tricep Extension', muscles: ['Triceps'], equipment: 'Dumbbell', difficulty: 2, type: 'isolation', description: 'Extend dumbbells upward from forehead while lying flat.' },
-  { id: 'q09', name: 'Sissy Squat', muscles: ['Quads'], equipment: 'Bodyweight', difficulty: 3, type: 'isolation', description: 'Lean back from knees holding vertical support, pushing quads.' },
-  { id: 'q10', name: 'Dumbbell Step-Ups', muscles: ['Quads', 'Glutes'], equipment: 'Dumbbell', difficulty: 1, type: 'compound', description: 'Step onto a box or platform holding dumbbells at sides.' },
-  { id: 'h07', name: 'Kettlebell Romanian Deadlift', muscles: ['Hamstrings', 'Glutes'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Perform hip hinge RDL holding a heavy kettlebell.' },
-  { id: 'g06', name: 'Cable Kickback', muscles: ['Glutes'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kick leg straight back against low cable resistance.' },
-  { id: 'ca05', name: 'Calf Press on Leg Press', muscles: ['Calves'], equipment: 'Machine', difficulty: 1, type: 'isolation', description: 'Perform calf raises using the leg press sled.' },
-  { id: 'co09', name: 'Hanging Knee Raise', muscles: ['Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Hang from bar and raise knees to chest.' },
-  { id: 'co10', name: 'Cable Crunch', muscles: ['Abs'], equipment: 'Cable', difficulty: 2, type: 'isolation', description: 'Kneel and crunch down using high rope attachment.' },
   { id: 'fb07', name: 'Kettlebell Snatch', muscles: ['Full Body'], equipment: 'Kettlebell', difficulty: 3, type: 'compound', description: 'Swing kettlebell and pull it overhead in one fluid motion.' },
   { id: 'fb08', name: 'Bear Crawls', muscles: ['Full Body', 'Abs'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Crawling on hands and toes close to the ground.' },
-
-  // ---- POWERLIFTING & MAX STRENGTH ----
-  { id: 'pl01', name: 'Barbell Box Squat', muscles: ['Quads', 'Glutes', 'Core'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Squat down to a box/bench and drive back up from a dead stop.' },
-  { id: 'pl02', name: 'Barbell Floor Press', muscles: ['Chest', 'Triceps', 'Shoulders'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Lie on the floor and bench press, eliminating lower body drive.' },
-  { id: 'pl03', name: 'Deficit Deadlift', muscles: ['Back', 'Hamstrings', 'Glutes'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Perform a deadlift while standing on an elevated platform for increased range of motion.' },
-  { id: 'pl04', name: 'Barbell Pin Press', muscles: ['Shoulders', 'Triceps'], equipment: 'Barbell', difficulty: 3, type: 'compound', description: 'Press the barbell from a resting position on safety pins in a rack.' },
-
-  // ---- CARDIO & CONDITIONING ----
   { id: 'cc01', name: 'Mountain Climbers', muscles: ['Core', 'Full Body'], equipment: 'Bodyweight', difficulty: 1, type: 'compound', description: 'In a plank position, drive knees to chest alternately in rapid succession.' },
   { id: 'cc02', name: 'Box Jumps', muscles: ['Quads', 'Glutes', 'Calves'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Jump explosively onto an elevated box and step down.' },
   { id: 'cc03', name: 'Jumping Jacks', muscles: ['Full Body'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Perform jumping jacks to raise heart rate and warm up the body.' },
   { id: 'cc04', name: 'High Knees', muscles: ['Core', 'Full Body'], equipment: 'Bodyweight', difficulty: 1, type: 'compound', description: 'Run in place, lifting knees up as high as possible.' },
   { id: 'cc05', name: 'Jump Squats', muscles: ['Quads', 'Glutes', 'Calves'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Squat down then jump up explosively, landing softly.' },
+  { id: 'fl01', name: 'Kettlebell Goblet Squat to Press', muscles: ['Full Body', 'Quads', 'Shoulders'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Squat holding kettlebell and press overhead as you stand up.' },
+  { id: 'fl02', name: 'Dumbbell Renegade Row', muscles: ['Back', 'Core', 'Chest'], equipment: 'Dumbbell', difficulty: 3, type: 'compound', description: 'Hold plank on dumbbells and row dumbbells alternately to hips.' },
+  { id: 'fl03', name: 'Wall Balls', muscles: ['Full Body', 'Quads', 'Shoulders'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Squat and throw a medicine ball/dumbbell high against a wall, catch and repeat.' },
+  { id: 'fb09', name: 'Dumbbell Devil Press', muscles: ['Full Body'], equipment: 'Dumbbell', difficulty: 3, type: 'compound', description: 'Perform a chest-to-floor burpee on dumbbells, then swing them overhead in one motion.' },
+  { id: 'fb10', name: 'Kettlebell Clean, Squat, and Press', muscles: ['Full Body'], equipment: 'Kettlebell', difficulty: 3, type: 'compound', description: 'Clean a kettlebell, perform a front squat, and press it overhead.' },
 
   // ---- MOBILITY & FLEXIBILITY ----
   { id: 'mf01', name: 'World\'s Greatest Stretch', muscles: ['Full Body', 'Core'], equipment: 'Bodyweight', difficulty: 2, type: 'compound', description: 'Step into lunge, rotate chest and arm up to ceiling, stretch hamstrings.' },
@@ -202,12 +221,7 @@ export const EXERCISES = [
   { id: 'mf12', name: 'Scorpion Stretch', muscles: ['Back', 'Obliques'], equipment: 'Bodyweight', difficulty: 2, type: 'isolation', description: 'Lie face down and reach one leg across your body toward the opposite hand to stretch hips and lower back.' },
   { id: 'mf13', name: 'Thread the Needle', muscles: ['Back', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Reach one arm underneath your body while on all fours, lowering shoulder to the floor.' },
   { id: 'mf14', name: 'Doorway Chest Stretch', muscles: ['Chest', 'Shoulders'], equipment: 'Bodyweight', difficulty: 1, type: 'isolation', description: 'Place forearms on a doorway and step forward to stretch chest muscles.' },
-  { id: 'mf15', name: 'Band Chest Opener', muscles: ['Chest', 'Shoulders'], equipment: 'Band', difficulty: 1, type: 'isolation', description: 'Hold a band in front and pull it wide to stretch chest and shoulders.' },
-
-  // ---- FAT LOSS & CIRCUITS ----
-  { id: 'fl01', name: 'Kettlebell Goblet Squat to Press', muscles: ['Full Body', 'Quads', 'Shoulders'], equipment: 'Kettlebell', difficulty: 2, type: 'compound', description: 'Squat holding kettlebell and press overhead as you stand up.' },
-  { id: 'fl02', name: 'Dumbbell Renegade Row', muscles: ['Back', 'Core', 'Chest'], equipment: 'Dumbbell', difficulty: 3, type: 'compound', description: 'Hold plank on dumbbells and row dumbbells alternately to hips.' },
-  { id: 'fl03', name: 'Wall Balls', muscles: ['Full Body', 'Quads', 'Shoulders'], equipment: 'Dumbbell', difficulty: 2, type: 'compound', description: 'Squat and throw a medicine ball/dumbbell high against a wall, catch and repeat.' }
+  { id: 'mf15', name: 'Band Chest Opener', muscles: ['Chest', 'Shoulders'], equipment: 'Band', difficulty: 1, type: 'isolation', description: 'Hold a band in front and pull it wide to stretch chest and shoulders.' }
 ];
 
 /* ============================================
