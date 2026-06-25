@@ -42,52 +42,37 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
     logs.forEach(log => {
       const logDate = new Date(log.loggedAt || log.date);
       if (logDate >= fortyEightHoursAgo) {
-        if (log.abs_volume !== undefined) {
-          volumes.Chest += parseFloat(log.chest_volume) || 0;
-          volumes.Back += parseFloat(log.back_volume) || 0;
-          volumes.Shoulders += parseFloat(log.shoulders_volume) || 0;
-          volumes.Biceps += parseFloat(log.biceps_volume) || 0;
-          volumes.Triceps += parseFloat(log.triceps_volume) || 0;
-          volumes.Quads += parseFloat(log.quads_volume) || 0;
-          volumes.Hamstrings += parseFloat(log.hamstrings_volume) || 0;
-          volumes.Glutes += parseFloat(log.glutes_volume) || 0;
-          volumes.Calves += parseFloat(log.calves_volume) || 0;
-          volumes.Abs += parseFloat(log.abs_volume) || 0;
-          volumes.Obliques += parseFloat(log.obliques_volume) || 0;
-        } else {
-          if (log.exercises) {
-            log.exercises.forEach(ex => {
-              let exVolume = 0;
-              if (ex.sets) {
-                ex.sets.forEach(s => {
-                  if (s.completed) {
-                    const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
-                    const r = parseInt(s.reps) || 1;
-                    exVolume += w * r;
-                  }
-                });
-              }
-              if (ex.muscles) {
-                ex.muscles.forEach(m => {
-                  const muscle = m.toLowerCase();
-                  if (muscle === 'chest') volumes.Chest += exVolume;
-                  else if (muscle === 'back') volumes.Back += exVolume;
-                  else if (muscle === 'shoulders') volumes.Shoulders += exVolume;
-                  else if (muscle === 'biceps') volumes.Biceps += exVolume;
-                  else if (muscle === 'triceps') volumes.Triceps += exVolume;
-                  else if (muscle === 'quads') volumes.Quads += exVolume;
-                  else if (muscle === 'hamstrings') volumes.Hamstrings += exVolume;
-                  else if (muscle === 'glutes') volumes.Glutes += exVolume;
-                  else if (muscle === 'calves') volumes.Calves += exVolume;
-                  else if (muscle === 'abs') volumes.Abs += exVolume;
-                  else if (muscle === 'obliques') volumes.Obliques += exVolume;
-                  else if (muscle === 'core') {
-                    volumes.Abs += exVolume;
-                  }
-                });
-              }
-            });
-          }
+        if (log.exercises) {
+          log.exercises.forEach(ex => {
+            let exVolume = 0;
+            if (ex.sets) {
+              ex.sets.forEach(s => {
+                if (s.completed) {
+                  const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
+                  exVolume += w;
+                }
+              });
+            }
+            if (ex.muscles) {
+              ex.muscles.forEach(m => {
+                const muscle = m.toLowerCase();
+                if (muscle === 'chest') volumes.Chest += exVolume;
+                else if (muscle === 'back') volumes.Back += exVolume;
+                else if (muscle === 'shoulders') volumes.Shoulders += exVolume;
+                else if (muscle === 'biceps') volumes.Biceps += exVolume;
+                else if (muscle === 'triceps') volumes.Triceps += exVolume;
+                else if (muscle === 'quads') volumes.Quads += exVolume;
+                else if (muscle === 'hamstrings') volumes.Hamstrings += exVolume;
+                else if (muscle === 'glutes') volumes.Glutes += exVolume;
+                else if (muscle === 'calves') volumes.Calves += exVolume;
+                else if (muscle === 'abs') volumes.Abs += exVolume;
+                else if (muscle === 'obliques') volumes.Obliques += exVolume;
+                else if (muscle === 'core') {
+                  volumes.Abs += exVolume;
+                }
+              });
+            }
+          });
         }
       }
     });
@@ -96,7 +81,7 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
   }, [logs]);
 
   const maxVal = useMemo(() => {
-    return Math.max(...Object.values(recentVolumes), 500);
+    return Math.max(...Object.values(recentVolumes), 50);
   }, [recentVolumes]);
 
   const getMuscleStyle = (muscle) => {
@@ -181,7 +166,7 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
           if (Array.isArray(ex.sets)) {
             ex.sets.forEach(set => {
               if (set.completed) {
-                logVolume += (set.weight || 0) * (set.reps || 0);
+                logVolume += (set.weight || 0);
               }
             });
           }
@@ -212,7 +197,7 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
         log.exercises.forEach(ex => {
           if (Array.isArray(ex.sets)) {
             ex.sets.forEach(s => {
-              if (s.completed) vol += (s.weight || 0) * (s.reps || 0);
+              if (s.completed) vol += (s.weight || 0);
             });
           }
         });

@@ -21,20 +21,24 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
-      return Promise.all([
-        ...keys.map(key => {
-          if (key !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache', key);
-            return caches.delete(key);
-          }
-        }),
-        // Broadcast to all PWA clients to force refresh
-        self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
-          clients.forEach(client => {
-            client.postMessage({ type: 'VERSION_UPDATE', version: CACHE_NAME });
+      let didUpdate = false;
+      const deletePromises = keys.map(key => {
+        if (key !== CACHE_NAME) {
+          console.log('[Service Worker] Removing old cache', key);
+          didUpdate = true;
+          return caches.delete(key);
+        }
+      });
+      
+      return Promise.all(deletePromises).then(() => {
+        if (didUpdate) {
+          return self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
+            clients.forEach(client => {
+              client.postMessage({ type: 'VERSION_UPDATE', version: CACHE_NAME });
+            });
           });
-        })
-      ]);
+        }
+      });
     })
   );
   self.clients.claim();

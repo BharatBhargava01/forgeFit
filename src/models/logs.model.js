@@ -40,8 +40,7 @@ class LogsModel {
           ex.sets.forEach(s => {
             if (s.completed) {
               const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
-              const r = parseInt(s.reps) || 1;
-              exVolume += w * r;
+              exVolume += w;
             }
           });
         }
@@ -67,16 +66,20 @@ class LogsModel {
       });
     }
 
+    const createdAt = data && data.date ? new Date(data.date) : new Date();
+
     await pool.query(
       `INSERT INTO workout_logs (
         id, name, data, user_id, 
         chest_volume, back_volume, shoulders_volume, biceps_volume, triceps_volume,
-        quads_volume, hamstrings_volume, glutes_volume, calves_volume, abs_volume, obliques_volume
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+        quads_volume, hamstrings_volume, glutes_volume, calves_volume, abs_volume, obliques_volume,
+        created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
       [
         id, name || 'Workout Log', data, userId,
         chest, back, shoulders, biceps, triceps,
-        quads, hamstrings, glutes, calves, abs, obliques
+        quads, hamstrings, glutes, calves, abs, obliques,
+        createdAt
       ]
     );
 
@@ -86,7 +89,7 @@ class LogsModel {
       biceps_volume: biceps, triceps_volume: triceps, quads_volume: quads, 
       hamstrings_volume: hamstrings, glutes_volume: glutes, calves_volume: calves, 
       abs_volume: abs, obliques_volume: obliques,
-      loggedAt: new Date().toISOString() 
+      loggedAt: createdAt.toISOString() 
     };
   }
 

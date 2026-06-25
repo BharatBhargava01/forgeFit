@@ -378,10 +378,14 @@ export default function MainPage() {
       // Listen for version updates from Service Worker
       navigator.serviceWorker.addEventListener('message', event => {
         if (event.data && event.data.type === 'VERSION_UPDATE') {
-          showToast('App successfully updated to the latest version! 🚀', 'info');
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          const lastReloadedVersion = localStorage.getItem('wg_last_reloaded_version');
+          if (lastReloadedVersion !== event.data.version) {
+            localStorage.setItem('wg_last_reloaded_version', event.data.version);
+            showToast('App successfully updated to the latest version! 🚀', 'info');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          }
         }
       });
 

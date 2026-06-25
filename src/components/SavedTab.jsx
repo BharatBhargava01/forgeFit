@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dumbbell, Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import {
   getWorkouts,
   deleteWorkout,
@@ -8,12 +8,14 @@ import {
   getWorkoutLogs,
   deleteWorkoutLog
 } from '@/lib/storage';
+import AddWorkoutModal from './AddWorkoutModal';
 
 export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRoutine, showToast }) {
   const [activeTab, setActiveTab] = useState('workouts'); // 'workouts', 'routines', 'history'
   const [itemsList, setItemsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -87,41 +89,53 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
           </p>
         </div>
         
-        {/* Toggle subtabs */}
-        <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 shrink-0 self-start sm:self-auto">
-          <button
-            onClick={() => setActiveTab('workouts')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
-              activeTab === 'workouts'
-                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
-                : 'text-text-secondary hover:text-white'
-            }`}
-          >
-            <Dumbbell className="w-3.5 h-3.5" />
-            Workouts
-          </button>
-          <button
-            onClick={() => setActiveTab('routines')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
-              activeTab === 'routines'
-                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
-                : 'text-text-secondary hover:text-white'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            Routines
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
-              activeTab === 'history'
-                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
-                : 'text-text-secondary hover:text-white'
-            }`}
-          >
-            <History className="w-3.5 h-3.5" />
-            History
-          </button>
+        {/* Toggle subtabs and manual log button */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0 self-start sm:self-auto">
+          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1">
+            <button
+              onClick={() => setActiveTab('workouts')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                activeTab === 'workouts'
+                  ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                  : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              <Dumbbell className="w-3.5 h-3.5" />
+              Workouts
+            </button>
+            <button
+              onClick={() => setActiveTab('routines')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                activeTab === 'routines'
+                  ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                  : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Routines
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                activeTab === 'history'
+                  ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                  : 'text-text-secondary hover:text-white'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              History
+            </button>
+          </div>
+
+          {activeTab === 'history' && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 font-bold" />
+              Log Session
+            </button>
+          )}
         </div>
       </div>
 
@@ -218,7 +232,7 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
                   ex.sets.forEach(s => {
                     if (s.completed) {
                       completedSets++;
-                      totalWeight += (s.weight || 0) * (s.reps || 0);
+                      totalWeight += (s.weight || 0);
                     }
                   });
                 }
@@ -314,13 +328,29 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
           <h3 className="font-heading font-bold text-xl text-white">
             No Saved {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           </h3>
-          <p className="text-text-secondary text-sm max-w-xs mx-auto">
+          <p className="text-text-secondary text-sm max-w-xs mx-auto mb-4">
             {activeTab === 'workouts' && 'Generate workouts in the generator tab and hit save to add templates here.'}
             {activeTab === 'routines' && 'Build routines and save them to plan your weekly schedules here.'}
             {activeTab === 'history' && 'Record and complete your workout sessions in the tracker to log training logs.'}
           </p>
+          {activeTab === 'history' && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer mx-auto"
+            >
+              <Plus className="w-3.5 h-3.5 font-bold" />
+              Log Workout Manually
+            </button>
+          )}
         </div>
       )}
+
+      <AddWorkoutModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSaveSuccess={fetchItems}
+        showToast={showToast}
+      />
 
     </div>
   );
