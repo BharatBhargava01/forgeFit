@@ -100,9 +100,16 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { goal, splitType, daysPerWeek } = body;
+    const { goal, splitType, daysPerWeek, profile = null } = body;
 
-    const cacheKey = generateAiCacheKey('routine', { goal, splitType, daysPerWeek });
+    const cacheKey = generateAiCacheKey('routine', { 
+      goal, 
+      splitType, 
+      daysPerWeek,
+      injuries: profile?.injuries || profile?.selected_injuries?.join(',') || 'None',
+      equipment: profile?.equipment || 'Full Gym',
+      focus_muscles: profile?.focus_muscles ? [...profile.focus_muscles].sort().join(',') : 'None'
+    });
 
     const formattedRoutine = await withCache(cacheKey, 604800, async () => {
       const goalLabels = {
@@ -116,23 +123,36 @@ export async function POST(request) {
       };
       const goalText = goalLabels[goal] || goalLabels.hypertrophy;
 
+      const profileContext = profile 
+        ? `User Profile Constraints:
+           - Fitness Level: ${profile.fitness_level || 'Not Specified'}
+           - Injuries/Constraints: ${profile.injuries || profile.selected_injuries?.join(', ') || 'None'}
+           - Preferred Equipment: ${profile.equipment || 'Full Gym'}
+           - Target Focus Muscles: ${profile.focus_muscles ? profile.focus_muscles.join(', ') : 'None'}`
+        : 'User Profile: None provided. Assume general gym access.';
+
       const prompt = `
-        You are a professional personal trainer. Generate a highly customized 7-day weekly workout routine.
+        You are a professional personal trainer and sports scientist. Generate a highly customized 7-day weekly workout routine.
         
         Parameters:
         - Training Goal: ${goalText}
         - Split Type: ${splitType}
         - Training Days: ${daysPerWeek} days per week, and ${7 - daysPerWeek} rest days.
         
+        ${profileContext}
+        
         Instructions:
         1. Distribute training days and rest days logically across the 7 days (Monday through Sunday).
         2. Ensure that exactly ${daysPerWeek} days have "isRest: false" and exactly ${7 - daysPerWeek} days have "isRest: true".
         3. For training days, select appropriate target muscles matching the split type (${splitType}), and generate realistic exercises.
-        4. For rest days, leave the muscles and exercises arrays empty and set isRest to true, and label it as 'Rest'.
-        5. Order exercises on training days such that compounds come first, followed by isolations.
-        6. Provide reasonable sets, reps, and rest times matching the training goal (${goal}).
-        7. Use proper casing and professional naming for exercises and muscle groups.
-        8. If the training goal is Mobility/Flexibility, you MUST ONLY select from specific mobility and flexibility exercises (e.g. World's Greatest Stretch, Cat-Cow Stretch, Cobra Stretch, Child's Pose, 90/90 Hip Rotations, Pigeon Pose, Couch Stretch, Scorpion Stretch, Thread the Needle, Doorway Chest Stretch, Band Chest Opener, etc.) and NOT select standard strength training or weightlifting exercises (like Bench Press, Squats, or Deadlifts).
+        4. Respect the equipment preferences: if preferred equipment is dumbbells only, bodyweight only, or kettlebells only, do NOT select exercises using standard gym machines, cables, or barbells.
+        5. Respect the injury constraints: do NOT select exercises that put unsafe load or stress on flagged joints (e.g. no heavy squats/deadlifts for back pain; no bench press for shoulder impingements; adapt or choose safe alternatives).
+        6. Respect focus muscles: increase the number of exercises or target sets for the prioritized focus muscles where possible.
+        7. For rest days, leave the muscles and exercises arrays empty and set isRest to true, and label it as 'Rest'.
+        8. Order exercises on training days such that compounds come first, followed by isolations.
+        9. Provide reasonable sets, reps, and rest times matching the training goal (${goal}).
+        10. Use proper casing and professional naming for exercises and muscle groups.
+        11. If the training goal is Mobility/Flexibility, you MUST ONLY select from specific mobility and flexibility exercises (e.g. World's Greatest Stretch, Cat-Cow Stretch, Cobra Stretch, Child's Pose, 90/90 Hip Rotations, Pigeon Pose, Couch Stretch, Scorpion Stretch, Thread the Needle, Doorway Chest Stretch, Band Chest Opener, etc.) and NOT select standard strength training or weightlifting exercises (like Bench Press, Squats, or Deadlifts).
       `;
 
       const model = genAI.getGenerativeModel({

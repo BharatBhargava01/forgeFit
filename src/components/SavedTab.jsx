@@ -42,6 +42,17 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
     fetchItems();
   }, [activeTab]);
 
+  useEffect(() => {
+    if (isAddModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isAddModalOpen]);
+
   const handleDelete = async (id, e) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this item?')) return;
@@ -76,7 +87,8 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 animate-slide-up">
+    <>
+      <div className="max-w-4xl mx-auto px-4 py-8 animate-slide-up">
       
       {/* Tab Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -345,13 +357,14 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
         </div>
       )}
 
+      </div>
+
       <AddWorkoutModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSaveSuccess={fetchItems}
         showToast={showToast}
       />
-
-    </div>
+    </>
   );
 }

@@ -106,6 +106,17 @@ export default function MainPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (authModalOpen || wizardOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [authModalOpen, wizardOpen]);
+
   const clearUserCaches = () => {
     localStorage.removeItem('wg_workouts_cache');
     localStorage.removeItem('wg_routines_cache');
@@ -825,6 +836,8 @@ export default function MainPage() {
                 onSignInClick={() => setAuthModalOpen(true)}
                 prefilledRoutine={prefilledRoutine}
                 clearPrefill={() => setPrefilledRoutine(null)}
+                onStartWorkout={handleStartWorkout}
+                onSendToGenerator={handleInspectWorkout}
               />
             )}
 

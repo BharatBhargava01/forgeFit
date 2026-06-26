@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Dumbbell, Save, Search, Check, X, ShieldAlert } from 'lucide-react';
 import { MUSCLE_GROUPS, EQUIPMENT, getAllExercises, filterExercises } from '@/lib/data';
-import { saveCustomExercise, getCustomExercises, deleteCustomExercise, saveRoutine } from '@/lib/storage';
+import { saveCustomExercise, getCustomExercises, deleteCustomExercise, saveRoutine, saveWorkout } from '@/lib/storage';
 
 export default function CreateTab({ showToast, refreshCache }) {
-  const [activeSubTab, setActiveSubTab] = useState('exercise'); // 'exercise' or 'routine'
+  const [activeSubTab, setActiveSubTab] = useState('exercise'); // 'exercise', 'workout', or 'routine'
   
   // Custom Exercise State
   const [exerciseName, setExerciseName] = useState('');
@@ -14,6 +14,11 @@ export default function CreateTab({ showToast, refreshCache }) {
   const [exerciseType, setExerciseType] = useState('compound');
   const [exerciseDescription, setExerciseDescription] = useState('');
   const [customExercisesList, setCustomExercisesList] = useState([]);
+
+  // Custom Workout State
+  const [workoutName, setWorkoutName] = useState('');
+  const [workoutDescription, setWorkoutDescription] = useState('');
+  const [workoutExercises, setWorkoutExercises] = useState([]); // Array of formatted exercises
 
   // Custom Routine State
   const [routineName, setRoutineName] = useState('');
@@ -37,6 +42,17 @@ export default function CreateTab({ showToast, refreshCache }) {
   useEffect(() => {
     fetchCustomExercises();
   }, []);
+
+  useEffect(() => {
+    if (pickerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [pickerOpen]);
 
   // Filter exercises for the picker modal
   const allAvailableExercises = useMemo(() => {
@@ -154,6 +170,22 @@ export default function CreateTab({ showToast, refreshCache }) {
   const handleConfirmPickerSelection = () => {
     const selectedExercises = allAvailableExercises.filter(ex => pickerSelectedIds.includes(ex.id));
     
+    if (pickerDayId === 'workout') {
+      const formatted = selectedExercises.map(ex => {
+        const isComp = ex.type === 'compound';
+        return {
+          ...ex,
+          sets: isComp ? 4 : 3,
+          reps: isComp ? 8 : 12,
+          rest: isComp ? 90 : 60
+        };
+      });
+      setWorkoutExercises(formatted);
+      setPickerOpen(false);
+      setPickerDayId(null);
+      return;
+    }
+    
     setRoutineDays(prev => prev.map(d => {
       if (d.id === pickerDayId) {
         // Map selected static data to default sets/reps prescriptions
@@ -244,8 +276,43 @@ export default function CreateTab({ showToast, refreshCache }) {
     }
   };
 
+  const handleSaveWorkout = async () => {
+    if (!workoutName.trim()) {
+      showToast('Workout name is required', 'error');
+      return;
+    }
+    if (workoutExercises.length === 0) {
+      showToast('Please add at least one exercise to the workout', 'error');
+      return;
+    }
+
+    const uniqueMuscles = Array.from(new Set(workoutExercises.flatMap(ex => ex.muscles)));
+
+    const payload = {
+      name: workoutName,
+      description: workoutDescription.trim() || `Custom workout focusing on ${uniqueMuscles.join(', ')}`,
+      muscles: uniqueMuscles,
+      difficulty: 2, // Default to Intermediate
+      duration: workoutExercises.length * 10,
+      exercises: workoutExercises,
+      totalExercises: workoutExercises.length,
+      estimatedMinutes: workoutExercises.length * 10
+    };
+
+    try {
+      await saveWorkout(payload);
+      showToast(`Custom workout "${workoutName}" saved successfully!`, 'success');
+      setWorkoutName('');
+      setWorkoutDescription('');
+      setWorkoutExercises([]);
+    } catch (err) {
+      showToast('Failed to save custom workout', 'error');
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up relative">
+    <>
+      <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up relative">
       
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -254,7 +321,7 @@ export default function CreateTab({ showToast, refreshCache }) {
             Create <span className="text-gradient">Your Own</span>
           </h2>
           <p className="text-text-secondary mt-2">
-            Build bespoke exercises or assemble custom training routines from scratch.
+            Build bespoke exercises, custom workouts, or assemble training routines from scratch.
           </p>
         </div>
         
@@ -269,6 +336,16 @@ export default function CreateTab({ showToast, refreshCache }) {
             }`}
           >
             ➕ Custom Exercise
+          </button>
+          <button
+            onClick={() => setActiveSubTab('workout')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              activeSubTab === 'workout'
+                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                : 'text-text-secondary hover:text-white'
+            }`}
+          >
+            💪 Custom Workout
           </button>
           <button
             onClick={() => setActiveSubTab('routine')}
@@ -460,6 +537,166 @@ export default function CreateTab({ showToast, refreshCache }) {
         </div>
       )}
 
+      {/* SUB-TAB: Custom Workout Builder */}
+      {activeSubTab === 'workout' && (
+        <div className="space-y-6 animate-fade-in text-white">
+          <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 space-y-4">
+            <h3 className="font-heading font-bold text-xl text-white pb-3 border-b border-white/5">
+              Build Custom Workout
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider" htmlFor="wk-name">
+                  Workout Name *
+                </label>
+                <input
+                  id="wk-name"
+                  type="text"
+                  required
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                  placeholder="e.g. Heavy Push Day"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-text-muted focus:outline-none focus:border-accent-purple transition-all text-sm"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider" htmlFor="wk-desc">
+                  Description
+                </label>
+                <input
+                  id="wk-desc"
+                  type="text"
+                  value={workoutDescription}
+                  onChange={(e) => setWorkoutDescription(e.target.value)}
+                  placeholder="e.g. Focus on chest, shoulders, and triceps strength"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-text-muted focus:outline-none focus:border-accent-purple transition-all text-sm"
+                />
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <button
+                onClick={() => handleOpenPicker('workout', workoutExercises)}
+                className="px-5 py-2.5 rounded-xl bg-accent-indigo/20 border border-accent-indigo hover:opacity-90 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Pick Exercises
+              </button>
+            </div>
+          </div>
+
+          {workoutExercises.length > 0 ? (
+            <div className="glass-card rounded-2xl p-6 border border-white/5 space-y-6">
+              <h4 className="font-heading font-bold text-lg text-white">Workout Exercises ({workoutExercises.length})</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {workoutExercises.map((ex, exIdx) => (
+                  <div
+                    key={ex.id + '-' + exIdx}
+                    className="flex flex-col justify-between p-4 rounded-2xl bg-white/2 border border-white/5 text-xs text-text-secondary gap-3"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Dumbbell className="w-4 h-4 text-accent-indigo shrink-0" />
+                        <div>
+                          <span className="font-bold text-white text-sm block">{ex.name}</span>
+                          <span className="text-[10px] text-text-muted">{ex.muscles.join(', ')} · {ex.equipment}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setWorkoutExercises(prev => prev.filter((_, i) => i !== exIdx));
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-accent-rose/10 text-text-muted hover:text-accent-rose transition-colors cursor-pointer border border-white/5"
+                        title="Remove Exercise"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Sets, reps, rest selectors */}
+                    <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-text-muted uppercase font-semibold">Sets:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="15"
+                          value={ex.sets}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 3;
+                            setWorkoutExercises(prev => prev.map((x, i) => i === exIdx ? { ...x, sets: val } : x));
+                          }}
+                          className="w-10 text-center bg-black/40 border border-white/10 rounded-lg py-1 text-white font-bold focus:outline-none focus:border-accent-purple"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-text-muted uppercase font-semibold">Reps:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={ex.reps}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 10;
+                            setWorkoutExercises(prev => prev.map((x, i) => i === exIdx ? { ...x, reps: val } : x));
+                          }}
+                          className="w-12 text-center bg-black/40 border border-white/10 rounded-lg py-1 text-white font-bold focus:outline-none focus:border-accent-purple"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-text-muted uppercase font-semibold">Rest:</span>
+                        <input
+                          type="number"
+                          min="5"
+                          step="5"
+                          value={ex.rest}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 60;
+                            setWorkoutExercises(prev => prev.map((x, i) => i === exIdx ? { ...x, rest: val } : x));
+                          }}
+                          className="w-14 text-center bg-black/40 border border-white/10 rounded-lg py-1 text-white font-bold focus:outline-none focus:border-accent-purple"
+                        />
+                        <span className="text-[10px] text-text-muted">sec</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Save Workout Action */}
+              <div className="pt-4 flex justify-center border-t border-white/5">
+                <button
+                  onClick={handleSaveWorkout}
+                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan hover:opacity-90 font-bold text-white shadow-lg shadow-accent-purple/20 flex items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02]"
+                >
+                  <Save className="w-5 h-5" />
+                  Save Custom Workout
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Empty State Workout */
+            <div className="glass-card rounded-2xl p-12 text-center border border-white/5 space-y-4">
+              <span className="text-3xl block">💪</span>
+              <span className="font-heading font-bold text-lg text-white block">Empty Workout Blueprint</span>
+              <p className="text-text-secondary text-sm max-w-xs mx-auto">
+                Name your workout above and pick exercises to start structuring your custom plan.
+              </p>
+              <button
+                onClick={() => handleOpenPicker('workout', workoutExercises)}
+                className="mt-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold cursor-pointer"
+              >
+                ➕ Pick First Exercises
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* SUB-TAB: Custom Routine Builder */}
       {activeSubTab === 'routine' && (
         <div className="space-y-6 animate-fade-in">
@@ -623,6 +860,7 @@ export default function CreateTab({ showToast, refreshCache }) {
           )}
         </div>
       )}
+    </div>
 
       {/* EXERCISE PICKER MODAL OVERLAY */}
       {pickerOpen && (
@@ -741,7 +979,6 @@ export default function CreateTab({ showToast, refreshCache }) {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 }

@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical, Plus, Search, Check } from 'lucide-react';
+import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical, Plus, Search, Check, Play } from 'lucide-react';
 import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
 import { getAllExercises, MUSCLE_GROUPS } from '@/lib/data';
 
-export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill, user, onSignInClick }) {
+const mapSplitToKey = (splitName) => {
+  if (!splitName) return 'push-pull-legs';
+  const name = splitName.toLowerCase();
+  if (name.includes('push') || name.includes('pull') || name.includes('ppl') || name.includes('legs')) return 'push-pull-legs';
+  if (name.includes('upper') || name.includes('lower')) return 'upper-lower';
+  if (name.includes('full')) return 'full-body';
+  if (name.includes('bro') || name.includes('body part') || name.includes('single')) return 'bro-split';
+  if (name.includes('arnold')) return 'arnold';
+  return 'push-pull-legs';
+};
+
+export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill, user, onSignInClick, onStartWorkout, onSendToGenerator }) {
   const [goal, setGoal] = useState('hypertrophy');
   const [splitType, setSplitType] = useState('push-pull-legs');
   const [daysPerWeek, setDaysPerWeek] = useState(4);
@@ -13,6 +24,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
   const [loading, setLoading] = useState(false);
   const [routineResult, setRoutineResult] = useState(null);
   const [expandedDays, setExpandedDays] = useState({});
+  const [agentProgress, setAgentProgress] = useState(null);
 
   // Edit, delete, swap states for routines
   const [swapDayIndex, setSwapDayIndex] = useState(null);
@@ -264,10 +276,26 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
   }, []);
 
   useEffect(() => {
-    if (user && user.profile && user.profile.goal) {
-      setGoal(user.profile.goal);
+    if (user && user.profile) {
+      const p = user.profile;
+      if (p.goal) setGoal(p.goal);
+      if (p.frequency) setDaysPerWeek(p.frequency);
+      if (p.ai_program_summary && p.ai_program_summary.recommendedSplit) {
+        setSplitType(mapSplitToKey(p.ai_program_summary.recommendedSplit));
+      }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (addExerciseDayIndex !== null || swapDayIndex !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [addExerciseDayIndex, swapDayIndex]);
 
   const handleSplitChange = (key) => {
     setSplitType(key);
@@ -279,24 +307,89 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
     setExpandedDays({});
 
     if (useAI) {
+      setAgentProgress({
+        planner: 'running',
+        selector: 'pending',
+        optimizer: 'pending',
+        reviewer: 'pending',
+        currentMessage: 'Agent 1: Planner is structuring weekly calendar splits...'
+      });
+
       try {
-        const res = await fetch('/api/routines/ai-generate', {
+        const res = await fetch('/api/routines/multi-agent-generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ goal, splitType, daysPerWeek })
+          body: JSON.stringify({ goal, splitType, daysPerWeek, profile: user?.profile || null })
         });
         if (!res.ok) throw new Error(`Status: ${res.status}`);
-        
-        const data = await res.json();
-        setRoutineResult(data);
-        showToast('AI weekly routine generated! 🧠', 'success');
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep the last incomplete line
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const event = JSON.parse(line);
+              
+              if (event.status === 'planner_done') {
+                setAgentProgress(prev => ({
+                  ...prev,
+                  planner: 'done',
+                  selector: 'running',
+                  currentMessage: event.message
+                }));
+              } else if (event.status === 'selector_done') {
+                setAgentProgress(prev => ({
+                  ...prev,
+                  selector: 'done',
+                  optimizer: 'running',
+                  currentMessage: event.message
+                }));
+              } else if (event.status === 'optimizer_done') {
+                setAgentProgress(prev => ({
+                  ...prev,
+                  optimizer: 'done',
+                  reviewer: 'running',
+                  currentMessage: event.message
+                }));
+              } else if (event.status === 'reviewer_done') {
+                setAgentProgress(prev => ({
+                  ...prev,
+                  reviewer: 'done',
+                  currentMessage: event.message
+                }));
+              } else if (event.status === 'completed') {
+                setRoutineResult(event.data);
+                showToast('AI weekly routine generated successfully! 🚀', 'success');
+              } else if (event.status === 'error') {
+                throw new Error(event.message);
+              }
+            } catch (jsonErr) {
+              console.warn("Error parsing chunk:", jsonErr);
+            }
+          }
+        }
       } catch (err) {
         console.warn('AI routine generation failed, falling back to rule-based engine:', err);
-        showToast('AI Generation failed. Falling back to traditional rules.', 'error');
+        if (err.message.includes('429')) {
+          showToast('Daily AI generation limit reached. Falling back to traditional rules. ⏳', 'warning');
+        } else {
+          showToast('AI Generation failed. Falling back to traditional rules.', 'error');
+        }
         const fallback = generateRoutine({ goal, daysPerWeek, splitType, profile: user?.profile || null });
         setRoutineResult(fallback);
       } finally {
         setLoading(false);
+        setAgentProgress(null);
       }
     } else {
       setTimeout(() => {
@@ -323,6 +416,61 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
     }
   };
 
+  const handleStartWorkoutDay = (day) => {
+    if (!onStartWorkout) return;
+    const workoutObj = {
+      id: `routine-day-${day.dayIndex}-${Date.now()}`,
+      name: `${routineResult.splitName} - ${day.label}`,
+      description: `Training day focusing on ${day.muscles.join(', ')}`,
+      muscles: day.muscles,
+      difficulty: 2,
+      duration: day.exercises.length * 10,
+      goal: routineResult.goal,
+      exercises: day.exercises.map((ex, idx) => ({
+        id: ex.id || `ex-${idx}-${Date.now()}`,
+        name: ex.name,
+        muscles: ex.muscles,
+        equipment: ex.equipment,
+        difficulty: ex.difficulty || 2,
+        type: ex.type || 'compound',
+        description: ex.description || '',
+        sets: ex.sets || 3,
+        reps: ex.reps || 10,
+        rest: ex.rest || 60
+      })),
+      totalExercises: day.exercises.length,
+      estimatedMinutes: day.exercises.length * 10
+    };
+    onStartWorkout(workoutObj);
+  };
+
+  const handleSendToGeneratorDay = (day) => {
+    if (!onSendToGenerator) return;
+    const workoutObj = {
+      name: `${routineResult.splitName} - ${day.label}`,
+      description: `Tweak and customize your ${day.label} session.`,
+      muscles: day.muscles,
+      difficulty: 2,
+      duration: day.exercises.length * 10,
+      goal: routineResult.goal,
+      exercises: day.exercises.map((ex, idx) => ({
+        id: ex.id || `ex-${idx}-${Date.now()}`,
+        name: ex.name,
+        muscles: ex.muscles,
+        equipment: ex.equipment,
+        difficulty: ex.difficulty || 2,
+        type: ex.type || 'compound',
+        description: ex.description || '',
+        sets: ex.sets || 3,
+        reps: ex.reps || 10,
+        rest: ex.rest || 60
+      })),
+      totalExercises: day.exercises.length,
+      estimatedMinutes: day.exercises.length * 10
+    };
+    onSendToGenerator(workoutObj);
+  };
+
   const toggleDayExpanded = (dayIdx) => {
     setExpandedDays(prev => ({
       ...prev,
@@ -333,7 +481,8 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
   const currentSplit = splitList.find(s => s.key === splitType);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up">
+    <>
+      <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up">
       {/* Tab Header */}
       <div className="mb-8">
         <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-white">
@@ -343,6 +492,31 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
           Create a full weekly training program structured around your fitness targets.
         </p>
       </div>
+
+      {/* AI Recommendation Notice */}
+      {user?.profile?.ai_program_summary && (
+        <div className="mb-6 p-4 rounded-xl border border-accent-purple/20 bg-accent-purple/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in text-white shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-xl shrink-0">👑</span>
+            <div className="text-xs sm:text-sm">
+              <span className="font-bold text-white">AI Coach Recommendation Active:</span> Your profile recommends a <span className="text-accent-cyan font-bold">{user.profile.ai_program_summary.recommendedSplit}</span> routine split at <span className="text-accent-purple font-bold">{user.profile.frequency || 4} days/week</span>.
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (user.profile.goal) setGoal(user.profile.goal);
+              if (user.profile.frequency) setDaysPerWeek(user.profile.frequency);
+              if (user.profile.ai_program_summary.recommendedSplit) {
+                setSplitType(mapSplitToKey(user.profile.ai_program_summary.recommendedSplit));
+              }
+              showToast('Parameters synced with your AI Coach Blueprint! ⚡', 'success');
+            }}
+            className="px-3 py-1.5 rounded-lg bg-accent-purple/10 border border-accent-purple/20 hover:bg-accent-purple/20 text-accent-purple text-xs font-bold shrink-0 transition-all cursor-pointer"
+          >
+            Apply Blueprint
+          </button>
+        </div>
+      )}
 
       {/* Control Panel */}
       <div className="glass-card rounded-2xl p-6 mb-8 shadow-xl">
@@ -439,7 +613,105 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
 
       {/* Routine Presentation */}
       <div className="w-full">
-        {loading ? (
+        {loading && agentProgress ? (
+          /* Multi-Agent Live Stepper Loading State */
+          <div className="glass-card rounded-2xl p-6 space-y-6 bg-[#0c0c12] shadow-xl border border-accent-purple/20 animate-slide-up text-white">
+            <div className="text-center pb-4 border-b border-white/5">
+              <div className="inline-flex p-3 rounded-full bg-accent-purple/10 border border-accent-purple/20 mb-3 text-accent-purple animate-pulse">
+                <Dumbbell className="w-8 h-8" />
+              </div>
+              <h4 className="font-heading font-extrabold text-xl text-white">Running Multi-Agent AI Routine Pipeline</h4>
+              <p className="text-xs text-text-secondary mt-1">Four collaborative agents are creating and auditing your weekly workout program.</p>
+            </div>
+
+            {/* Stepper */}
+            <div className="space-y-6 py-2 text-left max-w-md mx-auto">
+              {/* Step 1: Planner */}
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                    agentProgress.planner === 'done' ? 'bg-accent-emerald border-accent-emerald text-black' :
+                    agentProgress.planner === 'running' ? 'bg-accent-purple border-accent-purple text-white animate-pulse' :
+                    'bg-white/5 border-white/10 text-text-muted'
+                  }`}>
+                    {agentProgress.planner === 'done' ? <Check className="w-4 h-4 text-black stroke-[3px]" /> : '1'}
+                  </div>
+                  <div className="w-0.5 h-10 bg-white/10 my-1"></div>
+                </div>
+                <div>
+                  <h5 className={`font-bold text-sm ${agentProgress.planner === 'running' ? 'text-accent-purple' : agentProgress.planner === 'done' ? 'text-white' : 'text-text-muted'}`}>
+                    Agent 1: Week Strategist (Planner)
+                  </h5>
+                  <p className="text-xs text-text-secondary mt-0.5">Designs split structures, training schedules, and recovery distribution.</p>
+                </div>
+              </div>
+
+              {/* Step 2: Selector */}
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                    agentProgress.selector === 'done' ? 'bg-accent-emerald border-accent-emerald text-black' :
+                    agentProgress.selector === 'running' ? 'bg-accent-purple border-accent-purple text-white animate-pulse' :
+                    'bg-white/5 border-white/10 text-text-muted'
+                  }`}>
+                    {agentProgress.selector === 'done' ? <Check className="w-4 h-4 text-black stroke-[3px]" /> : '2'}
+                  </div>
+                  <div className="w-0.5 h-10 bg-white/10 my-1"></div>
+                </div>
+                <div>
+                  <h5 className={`font-bold text-sm ${agentProgress.selector === 'running' ? 'text-accent-purple' : agentProgress.selector === 'done' ? 'text-white' : 'text-text-muted'}`}>
+                    Agent 2: Exercise Selector
+                  </h5>
+                  <p className="text-xs text-text-secondary mt-0.5">Queries and grounds exercise sets from target muscles database.</p>
+                </div>
+              </div>
+
+              {/* Step 3: Optimizer */}
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                    agentProgress.optimizer === 'done' ? 'bg-accent-emerald border-accent-emerald text-black' :
+                    agentProgress.optimizer === 'running' ? 'bg-accent-purple border-accent-purple text-white animate-pulse' :
+                    'bg-white/5 border-white/10 text-text-muted'
+                  }`}>
+                    {agentProgress.optimizer === 'done' ? <Check className="w-4 h-4 text-black stroke-[3px]" /> : '3'}
+                  </div>
+                  <div className="w-0.5 h-10 bg-white/10 my-1"></div>
+                </div>
+                <div>
+                  <h5 className={`font-bold text-sm ${agentProgress.optimizer === 'running' ? 'text-accent-purple' : agentProgress.optimizer === 'done' ? 'text-white' : 'text-text-muted'}`}>
+                    Agent 3: Intensity & Recovery Optimizer
+                  </h5>
+                  <p className="text-xs text-text-secondary mt-0.5">Calculates training volume, sets, reps, and custom coaching tips.</p>
+                </div>
+              </div>
+
+              {/* Step 4: Reviewer */}
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                    agentProgress.reviewer === 'done' ? 'bg-accent-emerald border-accent-emerald text-black' :
+                    agentProgress.reviewer === 'running' ? 'bg-accent-purple border-accent-purple text-white animate-pulse' :
+                    'bg-white/5 border-white/10 text-text-muted'
+                  }`}>
+                    {agentProgress.reviewer === 'done' ? <Check className="w-4 h-4 text-black stroke-[3px]" /> : '4'}
+                  </div>
+                </div>
+                <div>
+                  <h5 className={`font-bold text-sm ${agentProgress.reviewer === 'running' ? 'text-accent-purple' : agentProgress.reviewer === 'done' ? 'text-white' : 'text-text-muted'}`}>
+                    Agent 4: Safety Auditor (Reviewer)
+                  </h5>
+                  <p className="text-xs text-text-secondary mt-0.5">Cross-checks joint injury boundaries and flags safety alerts.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Message */}
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-center text-xs text-text-secondary font-medium">
+              <span className="text-accent-purple font-bold">Status:</span> {agentProgress.currentMessage}
+            </div>
+          </div>
+        ) : loading ? (
           /* Skeleton Loading State */
           <div className="glass-card rounded-2xl p-6 space-y-6 shadow-xl animate-pulse">
             <div className="flex justify-between items-center pb-4 border-b border-white/5">
@@ -660,18 +932,35 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                           ))}
                         </div>
 
-                        {/* Add Exercise Button */}
-                        <div className="flex justify-center pt-3 border-t border-white/5 mt-3">
+                        {/* Action Buttons Group */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/5 mt-4">
                           <button
                             onClick={() => {
                               setAddExerciseDayIndex(day.dayIndex);
                               setAddSelectedIds([]);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/15 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02]"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                             Add Exercise
                           </button>
+                          
+                          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                            <button
+                              onClick={() => handleSendToGeneratorDay(day)}
+                              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-accent-purple/10 border border-accent-purple/20 hover:bg-accent-purple/20 text-accent-purple text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02]"
+                            >
+                              <Dumbbell className="w-4 h-4" />
+                              Tweak in Generator
+                            </button>
+                            <button
+                              onClick={() => handleStartWorkoutDay(day)}
+                              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-accent-emerald/20 border border-accent-emerald/30 hover:bg-accent-emerald/30 text-accent-emerald text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-lg shadow-accent-emerald/10"
+                            >
+                              <Play className="w-4 h-4 fill-accent-emerald" />
+                              Start Workout
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -697,6 +986,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
           </div>
         )}
       </div>
+    </div>
 
       {/* ROUTINE SWAP ALTERNATIVES MODAL */}
       {swapDayIndex !== null && swapExIdx !== null && (
@@ -890,6 +1180,6 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
         </div>
       )}
 
-    </div>
+    </>
   );
 }

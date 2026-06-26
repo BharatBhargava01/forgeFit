@@ -34,6 +34,14 @@ const insightsResponseSchema = {
 
 export async function POST(request) {
   try {
+    const rateLimit = await checkRateLimit(request, 'insights-generation', 2, 5);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Daily AI insights limit reached. Please try again in ${Math.ceil(rateLimit.resetInSeconds / 3600)} hours.` },
+        { status: 429 }
+      );
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE" || apiKey.trim() === "") {
       return NextResponse.json({ error: "Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file." }, { status: 500 });

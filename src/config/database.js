@@ -78,6 +78,12 @@ async function initDB() {
         data JSONB NOT NULL DEFAULT '{}',
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS rate_limits (
+        key TEXT PRIMARY KEY,
+        hits INTEGER NOT NULL DEFAULT 1,
+        reset_at TIMESTAMPTZ NOT NULL
+      );
     `);
 
     // 2. Support pre-existing users tables by adding columns if missing
