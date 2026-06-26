@@ -1,4 +1,4 @@
-const CACHE_NAME = 'forgefit-v8';
+const CACHE_NAME = 'forgefit-v9';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
