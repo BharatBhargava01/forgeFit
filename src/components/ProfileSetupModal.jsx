@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Save, User, Dumbbell, Award, Scale, Check } from 'lucide-react';
 import { saveRoutine } from '@/lib/storage';
 import { generateRoutine } from '@/lib/routine';
+import { generateBlueprint } from '@/lib/generator';
 
 export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, showToast, user }) {
   const [step, setStep] = useState(1);
@@ -143,29 +144,48 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
 
       if (!blueprintRes.ok) throw new Error('Failed to run AI profiling stream');
 
+      let wasBlueprintFallback = false;
+
       // Handle non-streaming JSON fallback
       const blueprintContentType = blueprintRes.headers.get('Content-Type') || '';
       if (blueprintContentType.includes('application/json')) {
-        // API returned a non-streaming error/fallback; skip to rule-based
-        throw new Error('AI blueprint API returned non-streaming response, falling back');
-      }
+        const jsonRes = await blueprintRes.json();
+        if (jsonRes.fallback && jsonRes.data) {
+          wasBlueprintFallback = true;
+          resolvedBlueprint = jsonRes.data;
+          setAiBlueprint(jsonRes.data);
+          setWizardProgress(prev => ({
+            ...prev,
+            dietitian: 'done',
+            strategist: 'done',
+            reviewer: 'done',
+            currentMessage: 'Profile blueprint generated with rule-based engine.'
+          }));
+        } else {
+          throw new Error('AI blueprint API returned invalid non-streaming response');
+        }
+      } else {
+        const reader = blueprintRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-      const reader = blueprintRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const event = JSON.parse(line);
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let event;
+            try {
+              event = JSON.parse(line);
+            } catch (jsonErr) {
+              console.warn("Error parsing blueprint chunk:", jsonErr);
+              continue;
+            }
             if (event.status === 'dietitian_done') {
               setWizardProgress(prev => ({
                 ...prev,
@@ -189,11 +209,12 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
             } else if (event.status === 'completed') {
               resolvedBlueprint = event.data;
               setAiBlueprint(event.data);
+              if (event.fallback) {
+                wasBlueprintFallback = true;
+              }
             } else if (event.status === 'error') {
               throw new Error(event.message);
             }
-          } catch (jsonErr) {
-            console.warn("Error parsing blueprint chunk:", jsonErr);
           }
         }
       }
@@ -291,17 +312,27 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
       }
 
       if (!resolvedRoutine) throw new Error("No routine compiled by multi-agent routine pipeline.");
-      showToast('AI program and routine successfully created! 🚀', 'success');
+      if (wasBlueprintFallback) {
+        showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
+      } else {
+        showToast('AI program and routine successfully created! 🚀', 'success');
+      }
 
     } catch (err) {
-      console.error('AI profiling failed, falling back to rule-based routine generation:', err);
-      // Fallback: generate a routine using the rule-based engine
+      console.error('AI profiling failed, falling back to rule-based generation:', err);
+      // Fallback: generate a blueprint and a routine using the rule-based engine
       try {
-        const splitType = mapSplitToKey(null);
+        const fallbackBlueprint = generateBlueprint({ profile: profileData });
+        if (fallbackBlueprint) {
+          setAiBlueprint(fallbackBlueprint);
+          resolvedBlueprint = fallbackBlueprint;
+        }
+
+        const splitType = mapSplitToKey(resolvedBlueprint ? resolvedBlueprint.recommendedSplit : null);
         const fallbackRoutine = generateRoutine({ goal, daysPerWeek: parseInt(frequency), splitType, profile: profileData });
         if (fallbackRoutine) {
           setGeneratedRoutine(fallbackRoutine);
-          showToast('AI profiling failed. Generated routine with rule-based engine instead.', 'warning');
+          showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
         } else {
           showToast('AI profiling failed. You can still save your profile.', 'error');
         }

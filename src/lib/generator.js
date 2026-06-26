@@ -223,3 +223,111 @@ export function generateWorkout({ muscles = [], difficulty = 2, duration = 30, e
     estimatedMinutes: Math.round(estimatedTime / 60),
   };
 }
+
+/**
+ * Generate a rule-based AI onboarding program blueprint.
+ * @param {Object} params
+ * @param {Object} params.profile - User profile details
+ * @returns {Object} Program blueprint
+ */
+export function generateBlueprint({ profile }) {
+  if (!profile) return null;
+
+  const w = parseFloat(profile.weight) || 70;
+  const h = parseFloat(profile.height) || 170;
+  const a = parseInt(profile.age) || 30;
+  const gender = profile.gender || 'male';
+  const goal = profile.goal || 'hypertrophy';
+  const frequency = parseInt(profile.frequency) || 4;
+
+  // 1. Calculate target calories and macronutrients (using Mifflin-St Jeor)
+  let bmr = 10 * w + 6.25 * h - 5 * a;
+  if (gender === 'male') {
+    bmr += 5;
+  } else if (gender === 'female') {
+    bmr -= 161;
+  } else {
+    bmr -= 78;
+  }
+
+  const tdee = Math.round(bmr * 1.375);
+  let targetCalories = tdee;
+  if (goal === 'fat-loss') {
+    targetCalories -= 500;
+  } else if (['hypertrophy', 'strength', 'powerlifting'].includes(goal)) {
+    targetCalories += 300;
+  } else if (['cardio-conditioning', 'endurance'].includes(goal)) {
+    targetCalories += 100;
+  }
+
+  const proteinGrams = Math.round(w * 2.0);
+  const proteinCalories = proteinGrams * 4;
+  const fatCalories = Math.round(targetCalories * 0.25);
+  const fatGrams = Math.round(fatCalories / 9);
+  const remainingCalories = targetCalories - proteinCalories - fatCalories;
+  const carbGrams = Math.max(0, Math.round(remainingCalories / 4));
+
+  // 2. Recommend routine split based on frequency
+  let recommendedSplit = "Full Body Split";
+  if (frequency === 3) {
+    recommendedSplit = "Push/Pull/Legs Split";
+  } else if (frequency === 4 || frequency === 5) {
+    recommendedSplit = "Upper/Lower Split";
+  } else if (frequency >= 6) {
+    recommendedSplit = "Push/Pull/Legs / Upper/Lower Hybrid Split";
+  }
+
+  // 3. Draft a weekly 7-day schedule summary
+  const weeklySchedule = [];
+  
+  if (frequency === 1) {
+    weeklySchedule.push("Monday: Rest", "Tuesday: Rest", "Wednesday: Full Body workout", "Thursday: Rest", "Friday: Rest", "Saturday: Rest", "Sunday: Rest");
+  } else if (frequency === 2) {
+    weeklySchedule.push("Monday: Full Body Day A", "Tuesday: Rest", "Wednesday: Rest", "Thursday: Full Body Day B", "Friday: Rest", "Saturday: Rest", "Sunday: Rest");
+  } else if (frequency === 3) {
+    weeklySchedule.push("Monday: Push workout", "Tuesday: Rest", "Wednesday: Pull workout", "Thursday: Rest", "Friday: Legs workout", "Saturday: Rest", "Sunday: Rest");
+  } else if (frequency === 4) {
+    weeklySchedule.push("Monday: Upper Body A", "Tuesday: Lower Body A", "Wednesday: Rest", "Thursday: Upper Body B", "Friday: Lower Body B", "Saturday: Rest", "Sunday: Rest");
+  } else if (frequency === 5) {
+    weeklySchedule.push("Monday: Upper Body A", "Tuesday: Lower Body A", "Wednesday: Rest", "Thursday: Upper Body B", "Friday: Lower Body B", "Saturday: Active Recovery / Weak Points", "Sunday: Rest");
+  } else if (frequency === 6) {
+    weeklySchedule.push("Monday: Push Day", "Tuesday: Pull Day", "Wednesday: Legs Day", "Thursday: Upper Body", "Friday: Lower Body", "Saturday: Arms & Core", "Sunday: Rest");
+  } else {
+    weeklySchedule.push("Monday: Push Day", "Tuesday: Pull Day", "Wednesday: Legs Day", "Thursday: Rest / Recovery", "Friday: Upper Body", "Saturday: Lower Body", "Sunday: Arms & Core");
+  }
+
+  // 4. Formulate coach advice addressing injuries and equipment
+  const injuryText = profile.injuries || 'none';
+  const equipment = profile.equipment || 'Full Gym';
+  
+  let coachAdvice = `Based on your profile, we have structured an optimal ${recommendedSplit}. Since your target is ${goal.replace('-', ' ')} with ${frequency} training days/week, consistency is your primary focus. `;
+  if (injuryText !== 'none' && injuryText !== '') {
+    coachAdvice += `Given your notes on joint/injury constraints (${injuryText}), ensure you always perform a thorough warm-up, focus on controlled execution (eccentrics), and immediately substitute any movement that triggers pain. `;
+  } else {
+    coachAdvice += `With no specified injury constraints, you are clear to utilize progressive overload across all compound movements. `;
+  }
+  coachAdvice += `Your equipment level is set to "${equipment}", and your exercise suggestions have been filtered accordingly.`;
+
+  // 5. Realistic key milestone
+  let keyMilestone = "Complete 90% of your scheduled sessions over the next 4 weeks.";
+  if (goal === 'fat-loss') {
+    keyMilestone = "Achieve a consistent, gradual reduction in body weight (target: 0.5kg/week) and track all sessions.";
+  } else if (['hypertrophy', 'strength', 'powerlifting'].includes(goal)) {
+    keyMilestone = "Increase weight or reps on your primary compound lifts (Squat, Bench, Row) by the end of week 4.";
+  } else if (['endurance', 'cardio-conditioning'].includes(goal)) {
+    keyMilestone = "Complete all conditioning intervals with 10% shorter recovery windows after 3 weeks.";
+  } else if (goal === 'mobility-flexibility') {
+    keyMilestone = "Increase range of motion in targeted areas by consistently performing pre- and post-workout stretching.";
+  }
+
+  return {
+    recommendedSplit,
+    weeklySchedule,
+    targetCalories,
+    proteinGrams,
+    carbGrams,
+    fatGrams,
+    coachAdvice,
+    keyMilestone
+  };
+}

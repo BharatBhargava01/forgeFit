@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle } from 'lucide-react';
+import { generateBlueprint } from '@/lib/generator';
 
 export default function ProfileTab({ user, onUpdateUser, showToast }) {
   const [age, setAge] = useState('');
@@ -82,6 +83,7 @@ export default function ProfileTab({ user, onUpdateUser, showToast }) {
       focus_muscles: focusMuscles
     };
 
+    let wasFallback = false;
     try {
       const res = await fetch('/api/auth/profile-analyze', {
         method: 'POST',
@@ -90,7 +92,39 @@ export default function ProfileTab({ user, onUpdateUser, showToast }) {
       });
 
       if (!res.ok) throw new Error('AI analysis failed');
-      
+
+      // Handle non-streaming JSON fallback response (rule-based generation from server)
+      const contentType = res.headers.get('Content-Type') || '';
+      if (contentType.includes('application/json')) {
+        const jsonRes = await res.json();
+        if (jsonRes.fallback && jsonRes.data) {
+          wasFallback = true;
+          const analysisData = jsonRes.data;
+          setAiBlueprint(analysisData);
+
+          const profileSavePayload = {
+            ...profileData,
+            selected_injuries: selectedInjuries,
+            custom_injury: customInjury,
+            ai_program_summary: analysisData
+          };
+
+          const saveRes = await fetch('/api/auth/me', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile: profileSavePayload })
+          });
+
+          if (!saveRes.ok) throw new Error('Failed to save blueprint to user record');
+          const updatedUser = await saveRes.json();
+
+          onUpdateUser(updatedUser);
+          localStorage.setItem('wg_user', JSON.stringify(updatedUser));
+          showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
+          return;
+        }
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -106,15 +140,20 @@ export default function ProfileTab({ user, onUpdateUser, showToast }) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
+          let event;
           try {
-            const event = JSON.parse(line);
-            if (event.status === 'completed') {
-              analysisData = event.data;
-            } else if (event.status === 'error') {
-              throw new Error(event.message);
-            }
+            event = JSON.parse(line);
           } catch (jsonErr) {
-            console.warn("Error parsing chunk:", jsonErr);
+            console.warn("Error parsing chunk as JSON:", jsonErr);
+            continue;
+          }
+          if (event.status === 'completed') {
+            analysisData = event.data;
+            if (event.fallback) {
+              wasFallback = true;
+            }
+          } else if (event.status === 'error') {
+            throw new Error(event.message);
           }
         }
       }
@@ -141,10 +180,43 @@ export default function ProfileTab({ user, onUpdateUser, showToast }) {
 
       onUpdateUser(updatedUser);
       localStorage.setItem('wg_user', JSON.stringify(updatedUser));
-      showToast('AI program blueprint successfully generated! 🚀', 'success');
+
+      if (wasFallback) {
+        showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
+      } else {
+        showToast('AI program blueprint successfully generated! 🚀', 'success');
+      }
     } catch (err) {
-      console.error(err);
-      showToast('Failed to generate AI program blueprint. Try again.', 'error');
+      console.warn('AI blueprint generation failed, falling back to rule-based engine:', err);
+      try {
+        const fallbackBlueprint = generateBlueprint({ profile: profileData });
+        if (!fallbackBlueprint) throw new Error('Could not generate fallback blueprint');
+        
+        setAiBlueprint(fallbackBlueprint);
+
+        const profileSavePayload = {
+          ...profileData,
+          selected_injuries: selectedInjuries,
+          custom_injury: customInjury,
+          ai_program_summary: fallbackBlueprint
+        };
+
+        const saveRes = await fetch('/api/auth/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile: profileSavePayload })
+        });
+
+        if (!saveRes.ok) throw new Error('Failed to save fallback blueprint to user record');
+        const updatedUser = await saveRes.json();
+
+        onUpdateUser(updatedUser);
+        localStorage.setItem('wg_user', JSON.stringify(updatedUser));
+        showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
+      } catch (fbErr) {
+        console.error('Both AI and fallback blueprint generation failed:', fbErr);
+        showToast('Failed to generate program blueprint. Try again.', 'error');
+      }
     } finally {
       setAnalyzingProfile(false);
     }
@@ -654,7 +726,7 @@ export default function ProfileTab({ user, onUpdateUser, showToast }) {
                     className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple text-white font-bold text-xs shadow-md shadow-accent-purple/10 flex items-center justify-center gap-1.5 mx-auto transition-all cursor-pointer disabled:opacity-50"
                   >
                     <span>⚡</span>
-                    {analyzingProfile ? 'Generate AI Blueprint' : 'Generating Blueprint...'}
+                    {analyzingProfile ? 'Generating Blueprint...' : 'Generate AI Blueprint'}
                   </button>
                 </div>
               )}
