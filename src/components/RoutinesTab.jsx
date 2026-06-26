@@ -323,6 +323,19 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
         });
         if (!res.ok) throw new Error(`Status: ${res.status}`);
 
+        // Handle non-streaming JSON fallback response (rule-based generation from server)
+        const contentType = res.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          const jsonRes = await res.json();
+          if (jsonRes.fallback && jsonRes.data) {
+            setRoutineResult(jsonRes.data);
+            showToast('Generated with rule-based engine (AI unavailable).', 'info');
+            setLoading(false);
+            setAgentProgress(null);
+            return;
+          }
+        }
+
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -380,11 +393,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
         }
       } catch (err) {
         console.warn('AI routine generation failed, falling back to rule-based engine:', err);
-        if (err.message.includes('429')) {
-          showToast('Daily AI generation limit reached. Falling back to traditional rules. ⏳', 'warning');
-        } else {
-          showToast('AI Generation failed. Falling back to traditional rules.', 'error');
-        }
+        showToast('AI generation failed. Falling back to rule-based engine.', 'warning');
         const fallback = generateRoutine({ goal, daysPerWeek, splitType, profile: user?.profile || null });
         setRoutineResult(fallback);
       } finally {

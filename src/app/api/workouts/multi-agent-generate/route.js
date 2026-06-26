@@ -1,27 +1,24 @@
 import { NextResponse } from 'next/server';
 import { runMultiAgentPipeline } from '@/lib/multiAgentPipeline';
-import { checkRateLimit } from '@/utils/rateLimit';
+import { generateWorkout } from '@/lib/generator';
 
 export async function POST(request) {
   try {
-    const rateLimit = await checkRateLimit(request, 'ai-generation', 2, 5);
-    if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: `Daily AI generation limit reached. Please try again in ${Math.ceil(rateLimit.resetInSeconds / 3600)} hours.` },
-        { status: 429 }
-      );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE" || apiKey.trim() === "") {
-      return NextResponse.json({ error: "Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file." }, { status: 500 });
-    }
-
     const body = await request.json();
     const { muscles, difficulty, duration, equipment, goal = 'hypertrophy', profile = null } = body;
 
     if (!muscles || !Array.isArray(muscles) || muscles.length === 0) {
       return NextResponse.json({ error: "At least one target muscle group must be specified." }, { status: 400 });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    const hasValidKey = apiKey && apiKey !== "YOUR_GEMINI_API_KEY_HERE" && apiKey.trim() !== "";
+
+    // If no valid API key, fall back to rule-based generation immediately
+    if (!hasValidKey) {
+      console.warn("⚠️ No valid Gemini API key. Falling back to rule-based workout generator.");
+      const fallbackWorkout = generateWorkout({ muscles, difficulty, duration, equipment, goal, profile });
+      return NextResponse.json({ fallback: true, data: fallbackWorkout });
     }
 
     const encoder = new TextEncoder();
@@ -43,9 +40,16 @@ export async function POST(request) {
           }
           controller.close();
         } catch (error) {
-          console.error("❌ Multi-Agent Pipeline Execution Error:", error);
-          const errorPayload = JSON.stringify({ status: 'error', message: error.message }) + '\n';
-          controller.enqueue(encoder.encode(errorPayload));
+          console.error("❌ Multi-Agent Pipeline failed, falling back to rule-based generator:", error);
+          try {
+            const fallbackWorkout = generateWorkout({ muscles, difficulty, duration, equipment, goal, profile });
+            const fallbackPayload = JSON.stringify({ status: 'completed', data: fallbackWorkout, fallback: true }) + '\n';
+            controller.enqueue(encoder.encode(fallbackPayload));
+          } catch (fbErr) {
+            console.error("❌ Rule-based fallback also failed:", fbErr);
+            const errorPayload = JSON.stringify({ status: 'error', message: error.message }) + '\n';
+            controller.enqueue(encoder.encode(errorPayload));
+          }
           controller.close();
         }
       }

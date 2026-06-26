@@ -1,4 +1,4 @@
-const CACHE_NAME = 'forgefit-v9';
+const CACHE_NAME = 'forgefit-v10';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -56,9 +56,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Skip caching API requests entirely, let storage.js handle offline fallbacks
+  // Skip caching API requests - let client-side handle errors & fallback logic
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(event.request));
     return;
   }
 

@@ -1,24 +1,21 @@
 import { NextResponse } from 'next/server';
 import { runMultiAgentRoutinePipeline } from '@/lib/multiAgentPipeline';
-import { checkRateLimit } from '@/utils/rateLimit';
+import { generateRoutine } from '@/lib/routine';
 
 export async function POST(request) {
   try {
-    const rateLimit = await checkRateLimit(request, 'ai-generation', 2, 5);
-    if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: `Daily AI generation limit reached. Please try again in ${Math.ceil(rateLimit.resetInSeconds / 3600)} hours.` },
-        { status: 429 }
-      );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE" || apiKey.trim() === "") {
-      return NextResponse.json({ error: "Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file." }, { status: 500 });
-    }
-
     const body = await request.json();
     const { goal, splitType, daysPerWeek, profile = null } = body;
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    const hasValidKey = apiKey && apiKey !== "YOUR_GEMINI_API_KEY_HERE" && apiKey.trim() !== "";
+
+    // If no valid API key, fall back to rule-based generation immediately
+    if (!hasValidKey) {
+      console.warn("⚠️ No valid Gemini API key. Falling back to rule-based routine generator.");
+      const fallbackRoutine = generateRoutine({ goal, daysPerWeek, splitType, profile });
+      return NextResponse.json({ fallback: true, data: fallbackRoutine });
+    }
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -37,9 +34,16 @@ export async function POST(request) {
           }
           controller.close();
         } catch (error) {
-          console.error("❌ Multi-Agent Routine Pipeline Execution Error:", error);
-          const errorPayload = JSON.stringify({ status: 'error', message: error.message }) + '\n';
-          controller.enqueue(encoder.encode(errorPayload));
+          console.error("❌ Multi-Agent Routine Pipeline failed, falling back to rule-based generator:", error);
+          try {
+            const fallbackRoutine = generateRoutine({ goal, daysPerWeek, splitType, profile });
+            const fallbackPayload = JSON.stringify({ status: 'completed', data: fallbackRoutine, fallback: true }) + '\n';
+            controller.enqueue(encoder.encode(fallbackPayload));
+          } catch (fbErr) {
+            console.error("❌ Rule-based routine fallback also failed:", fbErr);
+            const errorPayload = JSON.stringify({ status: 'error', message: error.message }) + '\n';
+            controller.enqueue(encoder.encode(errorPayload));
+          }
           controller.close();
         }
       }

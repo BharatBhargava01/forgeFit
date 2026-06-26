@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, Save, User, Dumbbell, Award, Scale, Check } from 'lucide-react';
 import { saveRoutine } from '@/lib/storage';
+import { generateRoutine } from '@/lib/routine';
 
 export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, showToast, user }) {
   const [step, setStep] = useState(1);
@@ -142,6 +143,13 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
 
       if (!blueprintRes.ok) throw new Error('Failed to run AI profiling stream');
 
+      // Handle non-streaming JSON fallback
+      const blueprintContentType = blueprintRes.headers.get('Content-Type') || '';
+      if (blueprintContentType.includes('application/json')) {
+        // API returned a non-streaming error/fallback; skip to rule-based
+        throw new Error('AI blueprint API returned non-streaming response, falling back');
+      }
+
       const reader = blueprintRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -214,6 +222,18 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
 
       if (!routineRes.ok) throw new Error('Failed to run AI weekly routine stream');
 
+      // Handle non-streaming JSON fallback from server
+      const routineContentType = routineRes.headers.get('Content-Type') || '';
+      if (routineContentType.includes('application/json')) {
+        const jsonRes = await routineRes.json();
+        if (jsonRes.fallback && jsonRes.data) {
+          setGeneratedRoutine(jsonRes.data);
+          setWizardProgress(prev => ({ ...prev, planner: 'done', selector: 'done', optimizer: 'done', routineReviewer: 'done', currentMessage: 'Routine generated with rule-based engine.' }));
+          showToast('AI routine unavailable. Generated with rule-based engine.', 'info');
+          return;
+        }
+      }
+
       const routineReader = routineRes.body.getReader();
       const routineDecoder = new TextDecoder();
       let routineBuffer = '';
@@ -274,8 +294,21 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
       showToast('AI program and routine successfully created! 🚀', 'success');
 
     } catch (err) {
-      console.error(err);
-      showToast('AI multi-agent profiling failed. You can still save your profile.', 'error');
+      console.error('AI profiling failed, falling back to rule-based routine generation:', err);
+      // Fallback: generate a routine using the rule-based engine
+      try {
+        const splitType = mapSplitToKey(null);
+        const fallbackRoutine = generateRoutine({ goal, daysPerWeek: parseInt(frequency), splitType, profile: profileData });
+        if (fallbackRoutine) {
+          setGeneratedRoutine(fallbackRoutine);
+          showToast('AI profiling failed. Generated routine with rule-based engine instead.', 'warning');
+        } else {
+          showToast('AI profiling failed. You can still save your profile.', 'error');
+        }
+      } catch (fbErr) {
+        console.error('Rule-based fallback also failed:', fbErr);
+        showToast('AI profiling failed. You can still save your profile.', 'error');
+      }
     } finally {
       setAnalyzingProfile(false);
     }
