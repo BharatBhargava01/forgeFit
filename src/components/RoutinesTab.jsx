@@ -491,16 +491,6 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
 
   return (
     <>
-      <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up">
-      {/* Tab Header */}
-      <div className="mb-8">
-        <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-white">
-          Routine <span className="text-gradient">Builder</span>
-        </h2>
-        <p className="text-text-secondary mt-2">
-          Create a full weekly training program structured around your fitness targets.
-        </p>
-      </div>
 
       {/* AI Recommendation Notice */}
       {user?.profile?.ai_program_summary && (
@@ -995,7 +985,6 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
           </div>
         )}
       </div>
-    </div>
 
       {/* ROUTINE SWAP ALTERNATIVES MODAL */}
       {swapDayIndex !== null && swapExIdx !== null && (

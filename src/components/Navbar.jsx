@@ -7,16 +7,13 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
 
   const navLinks = user ? [
     { id: 'home', label: 'Home' },
-    { id: 'generator', label: 'Generator' },
-    { id: 'routine', label: 'Routines' },
+    { id: 'planner', label: 'Planner' },
     { id: 'library', label: 'Library' },
     { id: 'create', label: 'Create' },
     { id: 'analytics', label: 'Analytics' },
-    { id: 'saved', label: 'Saved' },
   ] : [
     { id: 'home', label: 'Home' },
-    { id: 'generator', label: 'Generator' },
-    { id: 'routine', label: 'Routines' },
+    { id: 'planner', label: 'Planner' },
     { id: 'library', label: 'Library' },
   ];
 

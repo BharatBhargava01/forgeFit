@@ -210,50 +210,6 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
     });
   }, [logs]);
 
-  // Milestone Achievements
-  const achievements = useMemo(() => {
-    if (!metrics) return [];
-    
-    const list = [
-      {
-        id: 'first_step',
-        title: 'First Step',
-        desc: 'Log your first workout session',
-        unlocked: metrics.totalWorkouts >= 1,
-        icon: '🚀'
-      },
-      {
-        id: 'consistent_runner',
-        title: 'Consistent Runner',
-        desc: 'Complete 3 workout logs',
-        unlocked: metrics.totalWorkouts >= 3,
-        icon: '🏃'
-      },
-      {
-        id: 'heavy_lifter',
-        title: 'Heavy Lifter',
-        desc: 'Lift 5,000 kg in total volume',
-        unlocked: metrics.totalVolumeLifted >= 5000,
-        icon: '🏋️'
-      },
-      {
-        id: 'iron_warrior',
-        title: 'Iron Warrior',
-        desc: 'Lift 20,000 kg in total volume',
-        unlocked: metrics.totalVolumeLifted >= 20000,
-        icon: '👑'
-      },
-      {
-        id: 'time_warrior',
-        title: 'Time Warrior',
-        desc: 'Accumulate 3 hours of training',
-        unlocked: metrics.totalDurationSeconds >= 10800,
-        icon: '⏱️'
-      }
-    ];
-
-    return list;
-  }, [metrics]);
 
   // AI Insights Trigger
   const handleFetchAiInsights = async () => {
@@ -816,35 +772,6 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
             Click "Generate Advice" to analyze your logs and get AI-powered insights on your consistency, overload, and muscle imbalances.
           </div>
         )}
-      </div>
-
-      {/* MILESTONES & ACHIEVEMENTS SECTION */}
-      <div className="space-y-4">
-        <h3 className="font-heading font-extrabold text-lg text-white">Milestones & Achievements</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {achievements.map((ach) => (
-            <div
-              key={ach.id}
-              className={`glass-card rounded-xl p-4 border transition-all flex items-center gap-4 ${
-                ach.unlocked
-                  ? 'border-white/10 bg-white/3'
-                  : 'border-white/5 bg-white/1 opacity-30 select-none'
-              }`}
-            >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border ${
-                ach.unlocked
-                  ? 'bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-purple/20'
-                  : 'bg-white/5 border-white/5'
-              }`}>
-                {ach.unlocked ? ach.icon : '🔒'}
-              </div>
-              <div className="space-y-0.5">
-                <span className="font-bold text-sm text-white block">{ach.title}</span>
-                <span className="text-[10px] text-text-muted leading-tight block">{ach.desc}</span>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
     </div>

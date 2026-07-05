@@ -3,18 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, Calendar, Dumbbell, Sparkles, ChevronRight, Award, Clock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import GeneratorTab from '@/components/GeneratorTab';
-import RoutinesTab from '@/components/RoutinesTab';
+import PlannerTab from '@/components/PlannerTab';
 import LibraryTab from '@/components/LibraryTab';
 import CreateTab from '@/components/CreateTab';
 import TrackerTab from '@/components/TrackerTab';
 import AnalyticsTab from '@/components/AnalyticsTab';
-import SavedTab from '@/components/SavedTab';
+
 import { setCustomExercisesCache } from '@/lib/data';
 import { getCustomExercises, syncOfflineData } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
 import ProfileTab from '@/components/ProfileTab';
 import ProfileSetupModal from '@/components/ProfileSetupModal';
+import WorkoutPip from '@/components/WorkoutPip';
 
 export default function MainPage() {
   const [user, setUser] = useState(null);
@@ -32,6 +32,7 @@ export default function MainPage() {
   const [prefilledWorkout, setPrefilledWorkout] = useState(null);
   const [prefilledRoutine, setPrefilledRoutine] = useState(null);
   const [prefilledMuscles, setPrefilledMuscles] = useState(null);
+  const [plannerTab, setPlannerTab] = useState('workout');
 
   // React-based toast notifications state
   const [toasts, setToasts] = useState([]);
@@ -456,7 +457,7 @@ export default function MainPage() {
 
   // Redirect guest if they try to access restricted pages
   useEffect(() => {
-    if (!user && ['create', 'analytics', 'saved', 'tracker'].includes(currentPage)) {
+    if (!user && ['create', 'analytics', 'profile', 'tracker'].includes(currentPage)) {
       setCurrentPage('home');
     }
   }, [user, currentPage]);
@@ -502,18 +503,21 @@ export default function MainPage() {
   // Inspect workout/routine from Saved Library
   const handleInspectWorkout = (workout) => {
     setPrefilledWorkout(workout);
-    setCurrentPage('generator');
+    setPlannerTab('workout');
+    setCurrentPage('planner');
   };
 
   const handleInspectRoutine = (routine) => {
     setPrefilledRoutine(routine);
-    setCurrentPage('routine');
+    setPlannerTab('routine');
+    setCurrentPage('planner');
   };
 
   // Analytics AI recommendations trigger
   const handlePrefillMuscles = (muscles) => {
     setPrefilledMuscles(muscles);
-    setCurrentPage('generator');
+    setPlannerTab('workout');
+    setCurrentPage('planner');
   };
 
   // Finish session tracker callback
@@ -639,14 +643,20 @@ export default function MainPage() {
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                     <button
-                      onClick={() => setCurrentPage('generator')}
+                      onClick={() => {
+                        setPlannerTab('workout');
+                        setCurrentPage('planner');
+                      }}
                       className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan hover:opacity-90 font-bold text-white shadow-lg shadow-accent-purple/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Flame className="w-5 h-5 fill-white" />
                       ⚡ Generate Workout
                     </button>
                     <button
-                      onClick={() => setCurrentPage('routine')}
+                      onClick={() => {
+                        setPlannerTab('routine');
+                        setCurrentPage('planner');
+                      }}
                       className="px-8 py-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Calendar className="w-5 h-5" />
@@ -740,7 +750,10 @@ export default function MainPage() {
                   
                   {/* Feature 1 */}
                   <div
-                    onClick={() => setCurrentPage('generator')}
+                    onClick={() => {
+                      setPlannerTab('workout');
+                      setCurrentPage('planner');
+                    }}
                     className="glass-card rounded-2xl p-6 border border-white/5 cursor-pointer hover:border-white/15 transition-all group flex flex-col justify-between"
                   >
                     <div>
@@ -761,7 +774,10 @@ export default function MainPage() {
 
                   {/* Feature 2 */}
                   <div
-                    onClick={() => setCurrentPage('routine')}
+                    onClick={() => {
+                      setPlannerTab('routine');
+                      setCurrentPage('planner');
+                    }}
                     className="glass-card rounded-2xl p-6 border border-white/5 cursor-pointer hover:border-white/15 transition-all group flex flex-col justify-between"
                   >
                     <div>
@@ -787,7 +803,7 @@ export default function MainPage() {
                         showToast('Please sign in to view your saved workouts! 💾', 'info');
                         setAuthModalOpen(true);
                       } else {
-                        setCurrentPage('saved');
+                        setCurrentPage('profile');
                       }
                     }}
                     className="glass-card rounded-2xl p-6 border border-white/5 cursor-pointer hover:border-white/15 transition-all group flex flex-col justify-between"
@@ -804,7 +820,7 @@ export default function MainPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-accent-amber font-bold uppercase tracking-wider mt-4">
-                      View Library <ChevronRight className="w-3.5 h-3.5" />
+                      View Profile & Saved <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
 
@@ -813,31 +829,22 @@ export default function MainPage() {
               </div>
             )}
 
-            {currentPage === 'generator' && (
-              <GeneratorTab
+            {currentPage === 'planner' && (
+              <PlannerTab
                 key={user ? user.id : 'guest'}
-                onStartWorkout={handleStartWorkout}
-                showToast={showToast}
                 user={user}
                 onSignInClick={() => setAuthModalOpen(true)}
-                // Inspect variables
+                onStartWorkout={handleStartWorkout}
+                showToast={showToast}
                 prefilledWorkout={prefilledWorkout}
-                clearPrefill={() => setPrefilledWorkout(null)}
+                clearPrefillWorkout={() => setPrefilledWorkout(null)}
                 prefilledMuscles={prefilledMuscles}
                 clearPrefilledMuscles={() => setPrefilledMuscles(null)}
-              />
-            )}
-
-            {currentPage === 'routine' && (
-              <RoutinesTab
-                key={user ? user.id : 'guest'}
-                showToast={showToast}
-                user={user}
-                onSignInClick={() => setAuthModalOpen(true)}
                 prefilledRoutine={prefilledRoutine}
-                clearPrefill={() => setPrefilledRoutine(null)}
-                onStartWorkout={handleStartWorkout}
-                onSendToGenerator={handleInspectWorkout}
+                clearPrefillRoutine={() => setPrefilledRoutine(null)}
+                setPrefilledWorkout={setPrefilledWorkout}
+                plannerTab={plannerTab}
+                setPlannerTab={setPlannerTab}
               />
             )}
 
@@ -867,21 +874,14 @@ export default function MainPage() {
               />
             )}
 
-            {currentPage === 'saved' && (
-              <SavedTab
-                key={user ? user.id : 'guest'}
-                onStartWorkout={handleStartWorkout}
-                onInspectWorkout={handleInspectWorkout}
-                onInspectRoutine={handleInspectRoutine}
-                showToast={showToast}
-              />
-            )}
-
             {currentPage === 'profile' && (
               <ProfileTab
                 key={user ? user.id : 'guest'}
                 user={user}
                 onUpdateUser={(updated) => setUser(updated)}
+                onStartWorkout={handleStartWorkout}
+                onInspectWorkout={handleInspectWorkout}
+                onInspectRoutine={handleInspectRoutine}
                 showToast={showToast}
               />
             )}
@@ -889,6 +889,16 @@ export default function MainPage() {
         )}
 
       </main>
+
+      {/* Floating Picture-in-Picture Workout Tracker Overlay */}
+      {currentPage !== 'tracker' && (
+        <WorkoutPip 
+          onNavigate={setCurrentPage}
+          showToast={showToast}
+          onFinishWorkout={handleFinishWorkout}
+          onCancelWorkout={handleCancelWorkout}
+        />
+      )}
 
       {/* Floating Toast Notification Container */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">

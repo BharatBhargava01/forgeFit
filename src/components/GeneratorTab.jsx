@@ -28,6 +28,50 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState(null);
 
+  // Interactive Muscle Map States & Constants
+  const [hoveredMuscle, setHoveredMuscle] = useState(null);
+
+  const muscleGroupsFront = [
+    { name: 'Chest', label: 'Chest', paths: ['M 100,52 L 82,54 L 80,72 L 100,74 Z', 'M 100,52 L 118,54 L 120,72 L 100,74 Z'] },
+    { name: 'Shoulders', label: 'Shoulders', paths: ['M 80,54 L 70,62 L 76,76 L 82,68 Z', 'M 120,54 L 130,62 L 124,76 L 118,68 Z'] },
+    { name: 'Biceps', label: 'Biceps', paths: ['M 70,62 L 62,84 L 70,92 L 76,76 Z', 'M 130,62 L 138,84 L 130,92 L 124,76 Z'] },
+    { name: 'Abs', label: 'Core (Abs)', paths: ['M 92,76 L 108,76 L 106,108 L 94,108 Z'] },
+    { name: 'Obliques', label: 'Core (Obliques)', paths: ['M 80,72 L 92,76 L 94,108 L 82,108 Z', 'M 120,72 L 108,76 L 106,108 L 118,108 Z'] },
+    { name: 'Quads', label: 'Quads', paths: ['M 78,122 L 96,122 L 93,170 L 76,164 Z', 'M 122,122 L 104,122 L 107,170 L 124,164 Z'] },
+    { name: 'Calves', label: 'Calves', paths: ['M 77,174 L 91,174 L 88,220 L 78,220 Z', 'M 123,174 L 109,174 L 112,220 L 122,220 Z'] },
+  ];
+
+  const muscleGroupsBack = [
+    { name: 'Shoulders', label: 'Shoulders', paths: ['M 280,54 L 270,62 L 276,76 L 282,68 Z', 'M 320,54 L 330,62 L 324,76 L 318,68 Z'] },
+    { name: 'Back', label: 'Back', paths: ['M 300,52 L 282,54 L 282,108 L 300,108 Z', 'M 300,52 L 318,54 L 318,108 L 300,108 Z'] },
+    { name: 'Triceps', label: 'Triceps', paths: ['M 270,62 L 262,84 L 270,92 L 276,76 Z', 'M 330,62 L 338,84 L 330,92 L 324,76 Z'] },
+    { name: 'Glutes', label: 'Glutes', paths: ['M 280,108 L 300,110 L 300,132 L 278,126 Z', 'M 320,108 L 300,110 L 300,132 L 322,126 Z'] },
+    { name: 'Hamstrings', label: 'Hamstrings', paths: ['M 278,126 L 300,132 L 296,170 L 276,164 Z', 'M 322,126 L 300,132 L 304,170 L 324,164 Z'] },
+    { name: 'Calves', label: 'Calves', paths: ['M 277,174 L 291,174 L 288,220 L 278,220 Z', 'M 323,174 L 309,174 L 312,220 L 322,220 Z'] },
+  ];
+
+  const getMuscleStyle = (muscleName) => {
+    let mappedKey = muscleName;
+    if (muscleName === 'Abs' || muscleName === 'Obliques') {
+      mappedKey = 'Core';
+    }
+    const active = selectedMuscles.includes(mappedKey);
+    return {
+      fill: active ? 'rgba(124, 58, 237, 0.7)' : 'rgba(255, 255, 255, 0.04)',
+      stroke: active ? 'rgba(168, 85, 247, 1)' : 'rgba(255, 255, 255, 0.12)',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    };
+  };
+
+  const handleMuscleClick = (muscleName) => {
+    let mappedKey = muscleName;
+    if (muscleName === 'Abs' || muscleName === 'Obliques') {
+      mappedKey = 'Core';
+    }
+    toggleMuscle(mappedKey);
+  };
+
   // Duration recalculation helper
   const recalculateDuration = (exercises) => {
     const estimatedTime = exercises.reduce((acc, ex) => {
@@ -410,17 +454,6 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
 
   return (
     <>
-      <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up">
-      {/* Tab Header */}
-      <div className="mb-8">
-        <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-white">
-          Workout <span className="text-gradient">Generator</span>
-        </h2>
-        <p className="text-text-secondary mt-2">
-          Pick your muscle groups and preferences to get a balanced training session instantly.
-        </p>
-      </div>
-
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -428,19 +461,92 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
         <div className="lg:col-span-5 space-y-6">
           <div className="glass-card rounded-2xl p-6 space-y-6 shadow-xl">
             
-            {/* Target Muscles */}
+             {/* Target Muscles */}
             <div className="space-y-3">
-              <span className="text-sm font-semibold tracking-wider uppercase text-text-muted">
-                Target Muscle Groups
-              </span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold tracking-wider uppercase text-text-muted">
+                  Target Muscle Groups
+                </span>
+                {selectedMuscles.length > 0 && (
+                  <button
+                    onClick={() => setSelectedMuscles([])}
+                    className="text-[10px] text-accent-rose hover:underline font-bold transition-all cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {/* Visual Interactive Muscle Selector */}
+              <div className="p-4 rounded-2xl bg-white/2 border border-white/5 flex flex-col items-center select-none">
+                <div className="flex gap-4 items-center justify-center">
+                  {/* Front View */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] text-text-muted font-black uppercase tracking-wider mb-2">Front</span>
+                    <svg viewBox="50 20 100 210" className="w-[100px] h-[200px]">
+                      {/* Body outline silhouette */}
+                      <circle cx="100" cy="30" r="10" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="97,40 103,40 102,52 98,52" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="94,108 105,108 105,122 95,122" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="78,220 86,220 86,228 74,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="122,220 114,220 114,228 126,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      
+                      {muscleGroupsFront.map(mg => (
+                        <g
+                          key={mg.name}
+                          onMouseEnter={() => setHoveredMuscle(mg.label)}
+                          onMouseLeave={() => setHoveredMuscle(null)}
+                          onClick={() => handleMuscleClick(mg.name)}
+                        >
+                          {mg.paths.map((p, idx) => (
+                            <path key={idx} d={p} style={getMuscleStyle(mg.name)} />
+                          ))}
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+
+                  {/* Back View */}
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] text-text-muted font-black uppercase tracking-wider mb-2">Back</span>
+                    <svg viewBox="250 20 100 210" className="w-[100px] h-[200px]">
+                      {/* Body outline silhouette */}
+                      <circle cx="300" cy="30" r="10" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="297,40 303,40 302,52 298,52" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="294,108 306,108 305,126 295,126" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="278,220 286,220 286,228 274,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <polygon points="322,220 314,220 314,228 326,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      
+                      {muscleGroupsBack.map(mg => (
+                        <g
+                          key={mg.name}
+                          onMouseEnter={() => setHoveredMuscle(mg.label)}
+                          onMouseLeave={() => setHoveredMuscle(null)}
+                          onClick={() => handleMuscleClick(mg.name)}
+                        >
+                          {mg.paths.map((p, idx) => (
+                            <path key={idx} d={p} style={getMuscleStyle(mg.name)} />
+                          ))}
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-text-muted mt-2 text-center h-4 font-semibold">
+                  {hoveredMuscle ? `Toggle: ${hoveredMuscle}` : 'Click body parts to select target muscles'}
+                </div>
+              </div>
+
+              {/* Text chips list */}
+              <div className="flex flex-wrap gap-2 pt-1">
                 {MUSCLE_GROUPS.filter(m => m !== 'Full Body').map(muscle => {
                   const active = selectedMuscles.includes(muscle);
                   return (
                     <button
                       key={muscle}
                       onClick={() => toggleMuscle(muscle)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all duration-200 cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 cursor-pointer ${
                         active
                           ? 'bg-accent-purple/20 border-accent-purple text-white'
                           : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
@@ -897,7 +1003,6 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
           )}
         </div>
       </div>
-    </div>
 
       {/* SWAP ALTERNATIVES MODAL */}
       {workoutResult && swapIndex !== null && (
