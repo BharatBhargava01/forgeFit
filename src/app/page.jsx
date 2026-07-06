@@ -685,65 +685,7 @@ export default function MainPage() {
                   </div>
                 </div>
 
-                {/* Daily Motivation Setup */}
-                <div className="max-w-xl mx-auto w-full glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col gap-4 hover:border-white/10 transition-colors animate-fade-in">
-                  <div className="flex items-center justify-between gap-6">
-                    <div className="flex gap-4 items-center">
-                      <div className="w-12 h-12 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-2xl shrink-0">
-                        🔔
-                      </div>
-                      <div className="text-left">
-                        <h4 className="font-heading font-bold text-white text-sm">Motivational Reminders</h4>
-                        <p className="text-xs text-text-secondary mt-0.5 leading-normal">
-                          Get multiple reminders throughout the day to stay active.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={motivationEnabled}
-                        onChange={handleToggleMotivation}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
-                    </label>
-                  </div>
 
-                  {motivationEnabled && (
-                    <div className="border-t border-white/5 pt-4 animate-slide-up space-y-3">
-                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left">
-                        Trigger Times
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        {[
-                          { hour: 8, label: '8 AM', icon: '🌅' },
-                          { hour: 12, label: '12 PM', icon: '☀️' },
-                          { hour: 15, label: '3 PM', icon: '☕' },
-                          { hour: 18, label: '6 PM', icon: '🌆' },
-                          { hour: 21, label: '9 PM', icon: '🌙' }
-                        ].map(({ hour, label, icon }) => {
-                          const active = motivationHours.includes(hour);
-                          return (
-                            <button
-                              key={hour}
-                              onClick={() => handleToggleHour(hour)}
-                              className={`py-2 px-1 rounded-xl text-[11px] font-semibold border flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                                active
-                                  ? 'bg-accent-purple/20 border-accent-purple text-white shadow-md'
-                                  : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
-                              }`}
-                            >
-                              <span className="text-sm">{icon}</span>
-                              <span>{label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Features Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto pt-8">
@@ -883,6 +825,10 @@ export default function MainPage() {
                 onInspectWorkout={handleInspectWorkout}
                 onInspectRoutine={handleInspectRoutine}
                 showToast={showToast}
+                motivationEnabled={motivationEnabled}
+                motivationHours={motivationHours}
+                onToggleMotivation={handleToggleMotivation}
+                onToggleHour={handleToggleHour}
               />
             )}
           </>

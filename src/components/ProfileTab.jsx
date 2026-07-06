@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle,
-  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle
+  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3
 } from 'lucide-react';
 import { generateBlueprint } from '@/lib/generator';
 import {
@@ -20,7 +20,11 @@ export default function ProfileTab({
   onStartWorkout, 
   onInspectWorkout, 
   onInspectRoutine, 
-  showToast 
+  showToast,
+  motivationEnabled = false,
+  motivationHours = [8, 12, 15, 18, 21],
+  onToggleMotivation,
+  onToggleHour
 }) {
   // Navigation inside the profile
   const [activeSubTab, setActiveSubTab] = useState('overview'); // 'overview', 'workouts', 'routines', 'history', 'settings'
@@ -37,6 +41,7 @@ export default function ProfileTab({
   // Expandable logs & manual entry state
   const [expandedLogId, setExpandedLogId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
 
   // Form states
   const [age, setAge] = useState('');
@@ -1313,6 +1318,13 @@ export default function ProfileTab({
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
                           <button
+                            onClick={(e) => { e.stopPropagation(); setEditingLog(log); }}
+                            className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-cyan/10 hover:text-accent-cyan border border-white/5 transition-colors cursor-pointer"
+                            title="Edit Log"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={(e) => handleDeleteLog(log.id, e)}
                             className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
                             title="Delete Log"
@@ -1369,8 +1381,12 @@ export default function ProfileTab({
             )}
 
             <AddWorkoutModal
-              isOpen={isAddModalOpen}
-              onClose={() => setIsAddModalOpen(false)}
+              isOpen={isAddModalOpen || !!editingLog}
+              onClose={() => {
+                setIsAddModalOpen(false);
+                setEditingLog(null);
+              }}
+              logToEdit={editingLog}
               onSaveSuccess={fetchProfileData}
               showToast={showToast}
             />
@@ -1626,6 +1642,68 @@ export default function ProfileTab({
 
             {/* Explanation card */}
             <div className="lg:col-span-5 space-y-6">
+              
+              {/* Daily Motivation Setup */}
+              <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col gap-4 hover:border-white/10 transition-colors animate-fade-in">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex gap-3 items-center">
+                    <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-xl shrink-0">
+                      🔔
+                    </div>
+                    <div className="text-left">
+                      <h4 className="font-heading font-bold text-white text-sm">Motivational Reminders</h4>
+                      <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                        Get multiple reminders throughout the day to stay active.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={motivationEnabled}
+                      onChange={onToggleMotivation}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                  </label>
+                </div>
+
+                {motivationEnabled && (
+                  <div className="border-t border-white/5 pt-4 space-y-3">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left">
+                      Trigger Times
+                    </span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[
+                        { hour: 8, label: '8 AM', icon: '🌅' },
+                        { hour: 12, label: '12 PM', icon: '☀️' },
+                        { hour: 15, label: '3 PM', icon: '☕' },
+                        { hour: 18, label: '6 PM', icon: '🌆' },
+                        { hour: 21, label: '9 PM', icon: '🌙' }
+                      ].map(({ hour, label, icon }) => {
+                        const active = motivationHours.includes(hour);
+                        return (
+                          <button
+                            key={hour}
+                            type="button"
+                            onClick={() => onToggleHour(hour)}
+                            className={`py-2 px-1 rounded-xl text-[10px] font-semibold border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                              active
+                                ? 'bg-accent-purple/20 border-accent-purple text-white shadow-md'
+                                : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xs">{icon}</span>
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
                 <h3 className="font-heading font-black text-lg text-white flex items-center gap-2 pb-3 border-b border-white/5">
                   <HelpCircle className="w-5 h-5 text-accent-cyan" />

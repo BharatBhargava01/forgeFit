@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
-import { saveWorkoutLog, getCustomExercises } from '@/lib/storage';
+import { X, Plus, Trash2, Search } from 'lucide-react';
+import { saveWorkoutLog, updateWorkoutLog, getCustomExercises, saveCustomExercise } from '@/lib/storage';
 import { EXERCISES } from '@/lib/data';
 
-export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showToast }) {
+export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showToast, logToEdit }) {
   const [loading, setLoading] = useState(false);
   const [workoutName, setWorkoutName] = useState('Manual Workout Session');
   
@@ -22,6 +22,23 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
       sets: [{ id: 1, weight: '', reps: '' }]
     }
   ]);
+
+  // Overlay states for adding exercises
+  const [isAddExModalOpen, setIsAddExModalOpen] = useState(false);
+  const [isCreatingCustom, setIsCreatingCustom] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customMuscles, setCustomMuscles] = useState([]);
+  const [customEquipment, setCustomEquipment] = useState('Dumbbell');
+  const [exSearchQuery, setExSearchQuery] = useState('');
+
+  const getLocalDateString = (dateObjOrStr) => {
+    const d = new Date(dateObjOrStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const musclesList = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'];
 
@@ -43,6 +60,44 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
       loadExercises();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (logToEdit) {
+        setWorkoutName(logToEdit.name || 'Workout Session');
+        const localDate = getLocalDateString(logToEdit.loggedAt || logToEdit.date);
+        setDate(localDate);
+        setDurationMinutes(Math.round((logToEdit.durationSeconds || 0) / 60) || 45);
+        
+        if (logToEdit.exercises) {
+          setExercises(logToEdit.exercises.map((ex, idx) => ({
+            id: ex.id || `ex-${idx}-${Date.now()}`,
+            name: ex.name,
+            muscles: ex.muscles || [],
+            sets: (ex.sets || []).map((s, sIdx) => ({
+              id: s.id || `set-${sIdx}-${Date.now()}`,
+              weight: s.weight === undefined ? '' : s.weight,
+              reps: s.reps === undefined ? '' : s.reps
+            }))
+          })));
+        } else {
+          setExercises([{ id: 1, name: '', muscles: [], sets: [{ id: 1, weight: '', reps: '' }] }]);
+        }
+      } else {
+        setWorkoutName('Manual Workout Session');
+        setDate(new Date().toLocaleDateString('en-CA'));
+        setDurationMinutes(45);
+        setExercises([
+          {
+            id: 1,
+            name: '',
+            muscles: [],
+            sets: [{ id: 1, weight: '', reps: '' }]
+          }
+        ]);
+      }
+    }
+  }, [isOpen, logToEdit]);
 
   const getFilteredSuggestions = (query) => {
     if (!query) {
@@ -68,22 +123,76 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
     setFocusedExId(null);
   };
 
-  if (!isOpen) return null;
-
-  const handleAddExercise = () => {
+  const handleAddExistingExercise = (ex) => {
     setExercises([
       ...exercises,
       {
         id: Date.now() + Math.random(),
-        name: '',
-        muscles: [],
+        name: ex.name,
+        muscles: ex.muscles || [],
         sets: [{ id: Date.now() + Math.random(), weight: '', reps: '' }]
       }
     ]);
+    setIsAddExModalOpen(false);
+    setExSearchQuery('');
+    showToast(`Added "${ex.name}" to session`, 'success');
   };
 
+  const handleCreateAndAddExercise = async () => {
+    if (!customName.trim()) {
+      showToast('Please enter an exercise name', 'error');
+      return;
+    }
+    if (customMuscles.length === 0) {
+      showToast('Please select at least one target muscle', 'error');
+      return;
+    }
+
+    const newExPayload = {
+      name: customName.trim(),
+      muscles: customMuscles,
+      equipment: customEquipment,
+      difficulty: 2,
+      type: 'compound',
+      description: 'Created during log editing'
+    };
+
+    try {
+      const savedEx = await saveCustomExercise(newExPayload);
+      
+      setExercises([
+        ...exercises,
+        {
+          id: Date.now() + Math.random(),
+          name: savedEx.name,
+          muscles: savedEx.muscles,
+          sets: [{ id: Date.now() + Math.random(), weight: '', reps: '' }]
+        }
+      ]);
+      
+      const custom = await getCustomExercises();
+      const combined = [...(custom || []), ...EXERCISES];
+      setExerciseSuggestions(combined);
+      
+      setIsAddExModalOpen(false);
+      setCustomName('');
+      setCustomMuscles([]);
+      setCustomEquipment('Dumbbell');
+      setIsCreatingCustom(false);
+      setExSearchQuery('');
+      
+      showToast(`Created & Added "${savedEx.name}"!`, 'success');
+    } catch (err) {
+      showToast('Failed to create custom exercise', 'error');
+    }
+  };
+
+  if (!isOpen) return null;
+
   const handleRemoveExercise = (exId) => {
-    setExercises(exercises.filter(ex => ex.id !== exId));
+    if (confirm('Are you sure you want to remove this exercise from this session?')) {
+      setExercises(exercises.filter(ex => ex.id !== exId));
+    }
   };
 
   const handleExerciseChange = (exId, field, value) => {
@@ -208,13 +317,18 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
         }))
       };
 
-      await saveWorkoutLog(payload);
-      showToast('Workout logged successfully!', 'success');
+      if (logToEdit) {
+        await updateWorkoutLog(logToEdit.id, payload);
+        showToast('Workout log updated successfully! 🛠️', 'success');
+      } else {
+        await saveWorkoutLog(payload);
+        showToast('Workout logged successfully! 🔥', 'success');
+      }
       onSaveSuccess();
       onClose();
     } catch (err) {
       console.error(err);
-      showToast('Failed to save manual log', 'error');
+      showToast(logToEdit ? 'Failed to update log' : 'Failed to save manual log', 'error');
     } finally {
       setLoading(false);
     }
@@ -242,14 +356,14 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
 
         <div className="mb-6 flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-2xl">
-            💪
+            {logToEdit ? '🛠️' : '💪'}
           </div>
           <div className="text-left">
             <h3 className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight">
-              Log Workout Session
+              {logToEdit ? 'Edit Workout Session' : 'Log Workout Session'}
             </h3>
             <p className="text-text-secondary text-xs mt-0.5">
-              Manually document a past training session to keep your analytics up to date.
+              {logToEdit ? 'Modify details of this logged training session.' : 'Manually document a past training session to keep your analytics up to date.'}
             </p>
           </div>
         </div>
@@ -473,7 +587,7 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
 
             <button
               type="button"
-              onClick={handleAddExercise}
+              onClick={() => setIsAddExModalOpen(true)}
               className="w-full py-3.5 rounded-2xl border border-dashed border-white/10 hover:border-white/20 text-xs font-bold text-text-secondary hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-white/2"
             >
               <Plus className="w-4 h-4" /> Add Exercise
@@ -494,11 +608,194 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
               disabled={loading}
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan hover:opacity-90 font-bold text-white shadow-lg text-xs transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 min-w-[100px]"
             >
-              {loading ? 'Saving...' : 'Save Session'}
+              {loading ? 'Saving...' : (logToEdit ? 'Update Session' : 'Save Session')}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Add Exercise Modal */}
+      {isAddExModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-fade-in text-white text-left">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+            onClick={() => {
+              setIsAddExModalOpen(false);
+              setIsCreatingCustom(false);
+            }}
+          />
+          
+          {/* Card */}
+          <div className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#0a0a0f]/95 p-6 shadow-2xl backdrop-blur-xl animate-scale-up z-10 scrollbar-none space-y-6">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h3 className="font-heading font-black text-lg text-white">Add Exercise</h3>
+                <p className="text-text-secondary text-xs mt-0.5">Add an exercise to the workout session.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddExModalOpen(false);
+                  setIsCreatingCustom(false);
+                }}
+                className="p-1.5 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Toggle tabs for Search vs Create Custom */}
+            <div className="flex bg-white/5 border border-white/5 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setIsCreatingCustom(false)}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  !isCreatingCustom
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                Search Exercises
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreatingCustom(true)}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  isCreatingCustom
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                Create Custom
+              </button>
+            </div>
+
+            {!isCreatingCustom ? (
+              /* Search Existing tab */
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5">
+                  <Search className="w-4 h-4 text-text-muted shrink-0" />
+                  <input
+                    type="text"
+                    value={exSearchQuery}
+                    onChange={(e) => setExSearchQuery(e.target.value)}
+                    placeholder="Search e.g. Bench Press, Squat..."
+                    className="w-full bg-transparent border-none text-sm text-white focus:outline-none placeholder-text-muted"
+                  />
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-white/5 border border-white/5 rounded-2xl bg-black/20 scrollbar-none">
+                  {exerciseSuggestions
+                    .filter(ex => ex.name.toLowerCase().includes(exSearchQuery.toLowerCase()))
+                    .slice(0, 30)
+                    .map(ex => (
+                      <button
+                        key={ex.id || ex.name}
+                        type="button"
+                        onClick={() => handleAddExistingExercise(ex)}
+                        className="w-full px-4 py-3 hover:bg-[#12121a] hover:bg-opacity-50 text-left transition-colors cursor-pointer flex items-center justify-between gap-4 border-none bg-transparent"
+                      >
+                        <div>
+                          <span className="font-bold text-sm text-white block">{ex.name}</span>
+                          <span className="text-[10px] text-text-muted capitalize">{ex.equipment}</span>
+                        </div>
+                        <span className="text-[9px] text-text-secondary bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase font-bold shrink-0">
+                          {ex.muscles?.slice(0, 2).join(', ')}
+                        </span>
+                      </button>
+                    ))}
+                  {exerciseSuggestions.filter(ex => ex.name.toLowerCase().includes(exSearchQuery.toLowerCase())).length === 0 && (
+                    <div className="px-4 py-8 text-center text-xs text-text-muted italic">
+                      No matching exercises found. Click "Create Custom" to add one!
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Create Custom form */
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                    Exercise Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="e.g. Incline Cable Press"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-text-muted focus:border-accent-purple/50 focus:outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                    Equipment
+                  </label>
+                  <select
+                    value={customEquipment}
+                    onChange={(e) => setCustomEquipment(e.target.value)}
+                    className="w-full bg-[#12121a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-accent-purple/50 focus:outline-none transition-all"
+                  >
+                    {['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell', 'Band'].map(eq => (
+                      <option key={eq} value={eq}>{eq}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                    Target Muscles Hit
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-black/25 rounded-2xl border border-white/5">
+                    {['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'].map(muscle => {
+                      const isSelected = customMuscles.includes(muscle);
+                      return (
+                        <button
+                          key={muscle}
+                          type="button"
+                          onClick={() => {
+                            setCustomMuscles(prev =>
+                              isSelected ? prev.filter(m => m !== muscle) : [...prev, muscle]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-accent-purple/20 border-accent-purple text-white shadow'
+                              : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {muscle}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingCustom(false)}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-xs hover:bg-white/10 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateAndAddExercise}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan hover:opacity-90 font-bold text-white shadow-lg text-xs transition-all cursor-pointer"
+                  >
+                    Create & Add
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -93,6 +93,71 @@ class LogsModel {
     };
   }
 
+  static async update(id, name, data, userId) {
+    let chest = 0, back = 0, shoulders = 0, biceps = 0, triceps = 0;
+    let quads = 0, hamstrings = 0, glutes = 0, calves = 0;
+    let abs = 0, obliques = 0;
+
+    if (data && data.exercises) {
+      data.exercises.forEach(ex => {
+        let exVolume = 0;
+        if (ex.sets) {
+          ex.sets.forEach(s => {
+            if (s.completed) {
+              const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
+              exVolume += w;
+            }
+          });
+        }
+        if (ex.muscles) {
+          ex.muscles.forEach(m => {
+            const muscle = m.toLowerCase();
+            if (muscle === 'chest') chest += exVolume;
+            else if (muscle === 'back') back += exVolume;
+            else if (muscle === 'shoulders') shoulders += exVolume;
+            else if (muscle === 'biceps') biceps += exVolume;
+            else if (muscle === 'triceps') triceps += exVolume;
+            else if (muscle === 'quads') quads += exVolume;
+            else if (muscle === 'hamstrings') hamstrings += exVolume;
+            else if (muscle === 'glutes') glutes += exVolume;
+            else if (muscle === 'calves') calves += exVolume;
+            else if (muscle === 'abs') abs += exVolume;
+            else if (muscle === 'obliques') obliques += exVolume;
+            else if (muscle === 'core') {
+              abs += exVolume;
+            }
+          });
+        }
+      });
+    }
+
+    const updatedAt = data && data.date ? new Date(data.date) : new Date();
+
+    await pool.query(
+      `UPDATE workout_logs 
+       SET name = $2, data = $3, 
+           chest_volume = $4, back_volume = $5, shoulders_volume = $6, biceps_volume = $7, triceps_volume = $8,
+           quads_volume = $9, hamstrings_volume = $10, glutes_volume = $11, calves_volume = $12, abs_volume = $13, obliques_volume = $14,
+           created_at = $15
+       WHERE id = $1 AND user_id = $16`,
+      [
+        id, name || 'Workout Log', data,
+        chest, back, shoulders, biceps, triceps,
+        quads, hamstrings, glutes, calves, abs, obliques,
+        updatedAt, userId
+      ]
+    );
+
+    return { 
+      id, name, ...data, 
+      chest_volume: chest, back_volume: back, shoulders_volume: shoulders, 
+      biceps_volume: biceps, triceps_volume: triceps, quads_volume: quads, 
+      hamstrings_volume: hamstrings, glutes_volume: glutes, calves_volume: calves, 
+      abs_volume: abs, obliques_volume: obliques,
+      loggedAt: updatedAt.toISOString() 
+    };
+  }
+
   static async deleteById(id, userId) {
     await pool.query('DELETE FROM workout_logs WHERE id = $1 AND user_id = $2', [id, userId]);
   }

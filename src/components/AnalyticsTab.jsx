@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
-import { getWorkoutLogs } from '@/lib/storage';
+import { Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { getWorkoutLogs, updateWorkoutLog } from '@/lib/storage';
+import AddWorkoutModal from './AddWorkoutModal';
 
 export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
   const [logs, setLogs] = useState([]);
@@ -8,6 +9,53 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
   const [aiInsights, setAiInsights] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [hoveredGroup, setHoveredGroup] = useState(null);
+
+  // Consistency Calendar states
+  const [calendarView, setCalendarView] = useState('weekly'); // 'weekly', 'monthly', 'yearly'
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedCalDay, setSelectedCalDay] = useState(null); // 'YYYY-MM-DD'
+  const [editingLog, setEditingLog] = useState(null);
+
+  const getLocalDateString = (dateObjOrStr) => {
+    const d = new Date(dateObjOrStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const activeDaysMap = useMemo(() => {
+    const map = new Map();
+    logs.forEach(log => {
+      const dStr = getLocalDateString(log.loggedAt || log.date);
+      if (dStr) {
+        if (!map.has(dStr)) {
+          map.set(dStr, []);
+        }
+        map.get(dStr).push(log);
+      }
+    });
+    return map;
+  }, [logs]);
+
+  const getDaysInMonthGrid = (month, year) => {
+    const firstDay = new Date(year, month, 1);
+    let startDayOfWeek = firstDay.getDay(); // Sun=0, Mon=1...
+    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1; // Mon=0, Tue=1... Sun=6
+    
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    const grid = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+      grid.push(null);
+    }
+    for (let day = 1; day <= totalDays; day++) {
+      grid.push(new Date(year, month, day));
+    }
+    return grid;
+  };
 
   const muscleGroupsFront = [
     { name: 'Chest', label: 'Chest', paths: ['M 100,52 L 82,54 L 80,72 L 100,74 Z', 'M 100,52 L 118,54 L 120,72 L 100,74 Z'] },
@@ -483,28 +531,336 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
 
       </div>
 
-      {/* Consistency Calendar Row */}
-      <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl">
-        <h3 className="font-heading font-bold text-base text-white">Weekly Consistency</h3>
-        <p className="text-xs text-text-muted mt-0.5 mb-4">Highlighted days represent workouts completed in this current week.</p>
-        
-        <div className="flex justify-between max-w-md">
-          {calendarDays.map(day => {
-            const active = metrics?.activeDaysThisWeek.has(day.index);
-            return (
-              <div key={day.index} className="flex flex-col items-center gap-1.5">
-                <span className="text-xs text-text-muted font-bold">{day.label}</span>
-                <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all ${
-                  active
-                    ? 'bg-gradient-to-br from-accent-indigo to-accent-purple border-accent-purple text-white shadow shadow-accent-purple/20 scale-105'
-                    : 'border-white/5 bg-white/2 text-text-muted'
-                }`}>
-                  {active ? '✓' : ''}
-                </div>
-              </div>
-            );
-          })}
+      {/* Consistency Calendars Panel */}
+      <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-heading font-bold text-lg text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-accent-purple" />
+              Consistency Calendar
+            </h3>
+            <p className="text-xs text-text-muted mt-0.5">Track your workout frequency and stay accountable.</p>
+          </div>
+
+          {/* View Toggle tabs */}
+          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 shrink-0 self-start sm:self-auto">
+            {['weekly', 'monthly', 'yearly'].map((view) => (
+              <button
+                key={view}
+                onClick={() => {
+                  setCalendarView(view);
+                  setSelectedCalDay(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all ${
+                  calendarView === view
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Weekly View */}
+        {calendarView === 'weekly' && (
+          <div className="space-y-4">
+            <p className="text-xs text-text-muted">Completed workouts in the current week.</p>
+            <div className="flex gap-2.5 sm:gap-4 overflow-x-auto pb-2 max-w-md">
+              {(() => {
+                const now = new Date();
+                const currentDay = now.getDay();
+                const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+                const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                
+                return dayNames.map((name, i) => {
+                  const dayDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+                  const dStr = getLocalDateString(dayDate);
+                  const active = activeDaysMap.has(dStr);
+                  const isToday = dStr === getLocalDateString(new Date());
+                  
+                  return (
+                    <div 
+                      key={i} 
+                      onClick={() => dStr && setSelectedCalDay(selectedCalDay === dStr ? null : dStr)}
+                      className={`flex flex-col items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer select-none min-w-[52px] ${
+                        active 
+                          ? 'bg-accent-purple/10 border-accent-purple/35 text-white' 
+                          : isToday 
+                            ? 'bg-white/5 border-accent-cyan/50 text-white' 
+                            : 'border-white/5 bg-white/2 hover:border-white/10'
+                      }`}
+                    >
+                      <span className="text-[10px] text-text-muted font-bold uppercase">{name}</span>
+                      <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all ${
+                        active
+                          ? 'bg-gradient-to-br from-accent-indigo to-accent-purple border-accent-purple text-white shadow shadow-accent-purple/20 scale-105'
+                          : 'border-white/10 bg-white/5 text-text-secondary'
+                      }`}>
+                        {active ? '✓' : dayDate.getDate()}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Monthly View */}
+        {calendarView === 'monthly' && (
+          <div className="space-y-4">
+            {/* Header controls */}
+            <div className="flex items-center justify-between max-w-sm">
+              <button
+                onClick={() => {
+                  if (selectedMonth === 0) {
+                    setSelectedMonth(11);
+                    setSelectedYear(prev => prev - 1);
+                  } else {
+                    setSelectedMonth(prev => prev - 1);
+                  }
+                  setSelectedCalDay(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <span className="font-heading font-bold text-sm text-white capitalize">
+                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+
+              <button
+                onClick={() => {
+                  if (selectedMonth === 11) {
+                    setSelectedMonth(0);
+                    setSelectedYear(prev => prev + 1);
+                  } else {
+                    setSelectedMonth(prev => prev + 1);
+                  }
+                  setSelectedCalDay(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid layout */}
+            <div className="max-w-md">
+              {/* Days label */}
+              <div className="grid grid-cols-7 gap-2.5 text-center text-[10px] text-text-muted font-bold uppercase tracking-wider mb-2.5">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, idx) => (
+                  <div key={idx}>{label}</div>
+                ))}
+              </div>
+
+              {/* Days grid */}
+              <div className="grid grid-cols-7 gap-2 animate-fade-in">
+                {getDaysInMonthGrid(selectedMonth, selectedYear).map((dayDate, idx) => {
+                  if (!dayDate) {
+                    return <div key={idx} className="aspect-square bg-transparent"></div>;
+                  }
+                  
+                  const dStr = getLocalDateString(dayDate);
+                  const active = activeDaysMap.has(dStr);
+                  const isToday = dStr === getLocalDateString(new Date());
+                  const isSelected = selectedCalDay === dStr;
+                  const dayLogs = activeDaysMap.get(dStr) || [];
+                  
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedCalDay(isSelected ? null : dStr)}
+                      className={`aspect-square rounded-xl border flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer select-none relative ${
+                        active
+                          ? 'bg-gradient-to-br from-accent-indigo via-accent-purple to-accent-cyan border-none text-white shadow-md shadow-accent-purple/20 scale-100 hover:scale-105'
+                          : isToday
+                            ? 'bg-white/5 border-accent-cyan/50 text-white animate-pulse'
+                            : isSelected
+                              ? 'bg-white/10 border-white/20 text-white'
+                              : 'bg-white/2 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                      }`}
+                      title={active ? `${dayLogs.length} Workout(s)` : 'No workout'}
+                    >
+                      <span>{dayDate.getDate()}</span>
+                      {active && (
+                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-white"></span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Yearly View */}
+        {calendarView === 'yearly' && (
+          <div className="space-y-6">
+            {/* Header controls */}
+            <div className="flex items-center justify-between max-w-sm">
+              <button
+                onClick={() => {
+                  setSelectedYear(prev => prev - 1);
+                  setSelectedCalDay(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <span className="font-heading font-black text-base text-white tracking-widest">
+                {selectedYear}
+              </span>
+
+              <button
+                onClick={() => {
+                  setSelectedYear(prev => prev + 1);
+                  setSelectedCalDay(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 12 Months Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
+              {Array.from({ length: 12 }).map((_, monthIdx) => {
+                const monthDate = new Date(selectedYear, monthIdx, 1);
+                const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+                const gridDays = getDaysInMonthGrid(monthIdx, selectedYear);
+                
+                return (
+                  <div key={monthIdx} className="bg-white/2 border border-white/5 rounded-2xl p-3.5 space-y-2.5">
+                    <span className="font-heading font-bold text-xs text-white capitalize block border-b border-white/5 pb-1">
+                      {monthName}
+                    </span>
+                    
+                    {/* Small Mini Grid */}
+                    <div className="grid grid-cols-7 gap-1">
+                      {gridDays.map((dayDate, dayIdx) => {
+                        if (!dayDate) {
+                          return <div key={dayIdx} className="w-2.5 h-2.5 bg-transparent"></div>;
+                        }
+                        
+                        const dStr = getLocalDateString(dayDate);
+                        const active = activeDaysMap.has(dStr);
+                        const isToday = dStr === getLocalDateString(new Date());
+                        
+                        return (
+                          <div
+                            key={dayIdx}
+                            onClick={() => setSelectedCalDay(selectedCalDay === dStr ? null : dStr)}
+                            className={`w-2.5 h-2.5 rounded-[2px] cursor-pointer transition-all ${
+                              active
+                                ? 'bg-gradient-to-br from-accent-indigo to-accent-purple text-white shadow shadow-accent-purple/20'
+                                : isToday
+                                  ? 'bg-accent-cyan/40 border border-accent-cyan/50'
+                                  : 'bg-white/5 border border-white/5 hover:bg-white/15'
+                            }`}
+                            title={dStr + (active ? ' (Workout logged)' : '')}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Yearly legend / stats */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted border-t border-white/5 pt-4">
+              <div className="flex items-center gap-1.5">
+                <span>Rest Day</span>
+                <div className="w-3 h-3 rounded-[2px] bg-white/5 border border-white/5" />
+                <div className="w-3 h-3 rounded-[2px] bg-gradient-to-br from-accent-indigo to-accent-purple" />
+                <span>Workout Logged</span>
+              </div>
+              <div>
+                <span>Total Active Days ({selectedYear}): </span>
+                <span className="text-white font-bold">
+                  {Array.from(activeDaysMap.keys()).filter(dStr => dStr.startsWith(`${selectedYear}-`)).length} days
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Selected date log details (drilldown popup card) */}
+        {selectedCalDay && (
+          <div className="border-t border-white/5 pt-4 space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h4 className="font-heading font-bold text-sm text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-accent-emerald" />
+                Logs on {new Date(selectedCalDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </h4>
+              <button
+                onClick={() => setSelectedCalDay(null)}
+                className="text-xs text-text-muted hover:text-white transition-colors cursor-pointer"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            {activeDaysMap.has(selectedCalDay) ? (
+              <div className="space-y-3">
+                {activeDaysMap.get(selectedCalDay).map((log) => {
+                  let totalWeight = 0;
+                  let completedSets = 0;
+                  log.exercises?.forEach(ex => {
+                    ex.sets?.forEach(s => {
+                      if (s.completed) {
+                        completedSets++;
+                        totalWeight += (s.weight || 0);
+                      }
+                    });
+                  });
+
+                  return (
+                    <div 
+                      key={log.id}
+                      className="glass-card rounded-xl p-4 border border-white/5 bg-black/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div>
+                        <span className="font-bold text-white text-sm">{log.name}</span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted mt-1 items-center">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatDuration(log.durationSeconds)}
+                          </span>
+                          <span>·</span>
+                          <span>{completedSets} sets</span>
+                          {totalWeight > 0 && (
+                            <>
+                              <span>·</span>
+                              <span>{totalWeight.toLocaleString()} kg lifted</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditingLog(log)}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-accent-cyan/10 hover:text-accent-cyan text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          Edit Log
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-text-muted italic">No workouts completed on this date.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Charts Layout - Split 12-column grid */}
@@ -773,6 +1129,14 @@ export default function AnalyticsTab({ onPrefillGenerator, showToast }) {
           </div>
         )}
       </div>
+
+      <AddWorkoutModal
+        isOpen={!!editingLog}
+        onClose={() => setEditingLog(null)}
+        logToEdit={editingLog}
+        onSaveSuccess={fetchLogs}
+        showToast={showToast}
+      />
 
     </div>
   );

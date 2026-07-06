@@ -1,12 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause } from 'lucide-react';
-import { saveWorkoutLog } from '@/lib/storage';
+import { createPortal } from 'react-dom';
+import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause, Search } from 'lucide-react';
+import { saveWorkoutLog, getCustomExercises, saveCustomExercise } from '@/lib/storage';
+import { EXERCISES } from '@/lib/data';
 
 export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, showToast }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   
   // Exercises state: map exercises to sets structures
   const [loggedExercises, setLoggedExercises] = useState([]);
+  
+  // Custom exercise mid-workout state
+  const [isAddExModalOpen, setIsAddExModalOpen] = useState(false);
+  const [allExerciseSuggestions, setAllExerciseSuggestions] = useState([]);
+  const [exSearchQuery, setExSearchQuery] = useState('');
+  const [isCreatingCustom, setIsCreatingCustom] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customMuscles, setCustomMuscles] = useState([]);
+  const [customEquipment, setCustomEquipment] = useState('Dumbbell');
+  const [customRest, setCustomRest] = useState(60);
   
   // Rest Timer State
   const [restOpen, setRestOpen] = useState(false);
@@ -20,6 +38,21 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
   // Pause & Initialization State
   const [isPaused, setIsPaused] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load all exercise options for addition
+  useEffect(() => {
+    async function loadSuggestions() {
+      try {
+        const custom = await getCustomExercises();
+        setAllExerciseSuggestions([...(custom || []), ...EXERCISES]);
+      } catch (err) {
+        setAllExerciseSuggestions(EXERCISES);
+      }
+    }
+    if (isAddExModalOpen) {
+      loadSuggestions();
+    }
+  }, [isAddExModalOpen]);
 
   // Initialize tracker exercises or restore from saved session
   useEffect(() => {
@@ -163,6 +196,13 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     }));
   };
 
+  // Remove Exercise
+  const handleRemoveExercise = (exId) => {
+    if (confirm('Are you sure you want to remove this exercise and all its sets from this tracking session?')) {
+      setLoggedExercises(prev => prev.filter(ex => ex.id !== exId));
+    }
+  };
+
   // Update Set Weight / Reps
   const handleUpdateSetField = (exId, setId, field, value) => {
     setLoggedExercises(prev => prev.map(ex => {
@@ -195,6 +235,73 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       setRestSeconds(restDuration);
       setRestTotal(restDuration);
       setRestOpen(true);
+    }
+  };
+
+  // Add existing exercise to tracker
+  const handleAddExistingExercise = (ex) => {
+    const newEx = {
+      id: `ex-added-${Date.now()}-${Math.random()}`,
+      name: ex.name,
+      muscles: ex.muscles || ['Full Body'],
+      equipment: ex.equipment || 'Dumbbell',
+      type: ex.type || 'Strength',
+      rest: ex.rest || 60,
+      sets: [{ id: 1, weight: 0, reps: 10, completed: false }]
+    };
+    setLoggedExercises(prev => [...prev, newEx]);
+    setIsAddExModalOpen(false);
+    setExSearchQuery('');
+    showToast(`Added "${ex.name}" to session`, 'success');
+  };
+
+  // Create custom exercise and add to tracker
+  const handleCreateAndAddExercise = async () => {
+    if (!customName.trim()) {
+      showToast('Please enter an exercise name', 'error');
+      return;
+    }
+    if (customMuscles.length === 0) {
+      showToast('Please select at least one target muscle', 'error');
+      return;
+    }
+
+    const newExPayload = {
+      name: customName.trim(),
+      muscles: customMuscles,
+      equipment: customEquipment,
+      difficulty: 2,
+      type: 'compound',
+      description: 'Added during workout tracking'
+    };
+
+    try {
+      const savedEx = await saveCustomExercise(newExPayload);
+      
+      const newExTracker = {
+        id: `ex-added-${Date.now()}-${Math.random()}`,
+        name: savedEx.name,
+        muscles: savedEx.muscles,
+        equipment: savedEx.equipment,
+        type: 'compound',
+        rest: parseInt(customRest) || 60,
+        sets: [{ id: 1, weight: 0, reps: 10, completed: false }]
+      };
+      
+      setLoggedExercises(prev => [...prev, newExTracker]);
+      setIsAddExModalOpen(false);
+      
+      // Reset form
+      setCustomName('');
+      setCustomMuscles([]);
+      setCustomEquipment('Dumbbell');
+      setCustomRest(60);
+      setIsCreatingCustom(false);
+      setExSearchQuery('');
+      
+      showToast(`Created & Added "${savedEx.name}"!`, 'success');
+    } catch (err) {
+      showToast('Failed to create custom exercise', 'error');
     }
   };
 
@@ -369,13 +476,24 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleAddSet(ex.id)}
-                className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-bold flex items-center gap-1 border border-white/10 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Set
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleAddSet(ex.id)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-bold flex items-center gap-1 border border-white/10 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Set
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExercise(ex.id)}
+                  className="p-1.5 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
+                  title="Remove Exercise"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Set Logger Rows */}
@@ -465,6 +583,17 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
         ))}
       </div>
 
+      {/* Add Exercise Trigger Button */}
+      <div className="mt-4 mb-6 flex justify-center">
+        <button
+          onClick={() => setIsAddExModalOpen(true)}
+          className="px-5 py-3.5 rounded-2xl bg-white/5 border border-dashed border-white/20 hover:border-white/40 text-text-secondary hover:text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer w-full justify-center bg-white/2"
+        >
+          <Plus className="w-4 h-4 text-accent-purple" />
+          Add Exercise to Session
+        </button>
+      </div>
+
       {/* Main Actions */}
       <div className="mt-8 flex flex-col sm:flex-row gap-4">
         <button
@@ -483,6 +612,203 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
         </button>
       </div>
 
+      {mounted && isAddExModalOpen && createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-fade-in text-white text-left animate-fade-in">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+            onClick={() => {
+              setIsAddExModalOpen(false);
+              setIsCreatingCustom(false);
+            }}
+          />
+          
+          {/* Card */}
+          <div className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#0a0a0f]/95 p-6 shadow-2xl backdrop-blur-xl animate-scale-up z-10 scrollbar-none space-y-6">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h3 className="font-heading font-black text-lg text-white">Add Exercise</h3>
+                <p className="text-text-secondary text-xs mt-0.5">Customize your active training session.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddExModalOpen(false);
+                  setIsCreatingCustom(false);
+                }}
+                className="p-1.5 rounded-xl hover:bg-white/5 text-text-muted hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Toggle tabs for Search vs Create Custom */}
+            <div className="flex bg-white/5 border border-white/5 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setIsCreatingCustom(false)}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  !isCreatingCustom
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                Search Exercises
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreatingCustom(true)}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  isCreatingCustom
+                    ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                Create Custom
+              </button>
+            </div>
+
+            {!isCreatingCustom ? (
+              /* Search Existing tab */
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5">
+                  <Search className="w-4 h-4 text-text-muted shrink-0" />
+                  <input
+                    type="text"
+                    value={exSearchQuery}
+                    onChange={(e) => setExSearchQuery(e.target.value)}
+                    placeholder="Search e.g. Bench Press, Squat..."
+                    className="w-full bg-transparent border-none text-sm text-white focus:outline-none placeholder-text-muted"
+                  />
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-white/5 border border-white/5 rounded-2xl bg-black/20 scrollbar-none">
+                  {allExerciseSuggestions
+                    .filter(ex => ex.name.toLowerCase().includes(exSearchQuery.toLowerCase()))
+                    .slice(0, 30)
+                    .map(ex => (
+                      <button
+                        key={ex.id || ex.name}
+                        type="button"
+                        onClick={() => handleAddExistingExercise(ex)}
+                        className="w-full px-4 py-3 hover:bg-[#12121a] hover:bg-opacity-50 text-left transition-colors cursor-pointer flex items-center justify-between gap-4 border-none bg-transparent"
+                      >
+                        <div>
+                          <span className="font-bold text-sm text-white block">{ex.name}</span>
+                          <span className="text-[10px] text-text-muted capitalize">{ex.equipment}</span>
+                        </div>
+                        <span className="text-[9px] text-text-secondary bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase font-bold shrink-0">
+                          {ex.muscles?.slice(0, 2).join(', ')}
+                        </span>
+                      </button>
+                    ))}
+                  {allExerciseSuggestions.filter(ex => ex.name.toLowerCase().includes(exSearchQuery.toLowerCase())).length === 0 && (
+                    <div className="px-4 py-8 text-center text-xs text-text-muted italic">
+                      No matching exercises found. Click "Create Custom" to add one!
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Create Custom form */
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                    Exercise Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="e.g. Incline Cable Press"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-text-muted focus:border-accent-purple/50 focus:outline-none transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                      Equipment
+                    </label>
+                    <select
+                      value={customEquipment}
+                      onChange={(e) => setCustomEquipment(e.target.value)}
+                      className="w-full bg-[#12121a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-accent-purple/50 focus:outline-none transition-all"
+                    >
+                      {['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell', 'Band'].map(eq => (
+                        <option key={eq} value={eq}>{eq}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                      Rest Duration (seconds)
+                    </label>
+                    <input
+                      type="number"
+                      value={customRest}
+                      onChange={(e) => setCustomRest(parseInt(e.target.value) || 0)}
+                      placeholder="e.g. 60"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-text-muted focus:border-accent-purple/50 focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                    Target Muscles Hit
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-black/25 rounded-2xl border border-white/5">
+                    {['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'].map(muscle => {
+                      const isSelected = customMuscles.includes(muscle);
+                      return (
+                        <button
+                          key={muscle}
+                          type="button"
+                          onClick={() => {
+                            setCustomMuscles(prev =>
+                              isSelected ? prev.filter(m => m !== muscle) : [...prev, muscle]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-accent-purple/20 border-accent-purple text-white shadow'
+                              : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {muscle}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingCustom(false)}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-xs hover:bg-white/10 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateAndAddExercise}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan hover:opacity-90 font-bold text-white shadow-lg text-xs transition-all cursor-pointer"
+                  >
+                    Create & Add
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -290,6 +290,43 @@ export async function deleteWorkoutLog(id) {
   }
 }
 
+export async function updateWorkoutLog(id, updatedLog) {
+  try {
+    const result = await apiRequest(`/logs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updatedLog),
+    });
+    let cache = readLocal('wg_workout_logs_cache');
+    cache = cache.map(l => l.id === id ? result : l);
+    writeLocal('wg_workout_logs_cache', cache);
+    return result;
+  } catch {
+    // If pending offline log, update it
+    let pending = readLocal('wg_workout_logs');
+    if (pending.some(l => l.id === id)) {
+      pending = pending.map(l => l.id === id ? { ...l, ...updatedLog } : l);
+      writeLocal('wg_workout_logs', pending);
+      return { id, ...updatedLog };
+    }
+    
+    // Otherwise, update the cached log
+    let cache = readLocal('wg_workout_logs_cache');
+    cache = cache.map(l => l.id === id ? { ...l, ...updatedLog } : l);
+    writeLocal('wg_workout_logs_cache', cache);
+    
+    // Save locally for sync
+    const updates = readLocal('wg_updated_logs');
+    const existingIdx = updates.findIndex(u => u.id === id);
+    if (existingIdx !== -1) {
+      updates[existingIdx] = { id, ...updatedLog };
+    } else {
+      updates.push({ id, ...updatedLog });
+    }
+    writeLocal('wg_updated_logs', updates);
+    return { id, ...updatedLog };
+  }
+}
+
 /* --- Synchronization --- */
 
 async function syncCollection(key, url) {
@@ -346,6 +383,38 @@ async function syncDeletes(key, url) {
   return successCount > 0;
 }
 
+async function syncUpdates(key, url) {
+  const localItems = readLocal(key);
+  if (!localItems.length) return false;
+
+  console.log(`[Sync] Syncing ${localItems.length} updates for ${key}...`);
+  const failedToSync = [];
+  let successCount = 0;
+
+  for (const item of localItems) {
+    try {
+      const payload = { ...item };
+      const id = payload.id;
+      delete payload.id;
+      delete payload.loggedAt;
+      delete payload.createdAt;
+      delete payload.isCustom;
+
+      await apiRequest(`${url}/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      successCount++;
+    } catch (err) {
+      console.error(`[Sync] Failed to sync update from ${key}:`, err);
+      failedToSync.push(item);
+    }
+  }
+
+  writeLocal(key, failedToSync);
+  return successCount > 0;
+}
+
 export async function syncOfflineData() {
   if (typeof window === 'undefined' || !navigator.onLine) return false;
 
@@ -357,6 +426,7 @@ export async function syncOfflineData() {
       syncCollection('wg_saved_workouts', '/workouts'),
       syncCollection('wg_saved_routines', '/routines'),
       syncCollection('wg_workout_logs', '/logs'),
+      syncUpdates('wg_updated_logs', '/logs'),
 
       syncDeletes('wg_deleted_exercises', '/exercises/custom'),
       syncDeletes('wg_deleted_workouts', '/workouts'),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { Dumbbell, Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Edit3 } from 'lucide-react';
 import {
   getWorkouts,
   deleteWorkout,
@@ -16,6 +16,7 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
   const [loading, setLoading] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -291,6 +292,13 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       <button
+                        onClick={(e) => { e.stopPropagation(); setEditingLog(log); }}
+                        className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-cyan/10 hover:text-accent-cyan border border-white/5 transition-colors cursor-pointer"
+                        title="Edit Log"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={(e) => handleDelete(log.id, e)}
                         className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
                         title="Delete Log"
@@ -360,8 +368,12 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
       </div>
 
       <AddWorkoutModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={isAddModalOpen || !!editingLog}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingLog(null);
+        }}
+        logToEdit={editingLog}
         onSaveSuccess={fetchItems}
         showToast={showToast}
       />
