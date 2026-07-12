@@ -829,12 +829,12 @@ export default function MainPage() {
         <div className={`flex-1 rounded-none lg:rounded-[2.5rem] shadow-2xl flex flex-col overflow-y-auto min-h-[calc(100vh-1.5rem)] transition-colors duration-300 ${resolvedTheme === 'light' ? 'bg-[#eef0f2] text-[#1e1f22]' : 'bg-[#0d0d15] text-[#ededed]'}`}>
           
           {/* Top Header Panel */}
-          <header className="px-6 pt-6 pb-2.5 flex items-center justify-between gap-4 border-b border-black/[0.02]">
+          <header className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2.5 flex items-center justify-between gap-2 sm:gap-4 border-b border-black/[0.02]">
             
             {/* User Profile Widget on the Left */}
             <div className="relative">
               <div 
-                className="flex items-center gap-3 p-1.5 pr-4.5 rounded-full bg-white border border-gray-200/50 hover:border-gray-300 shadow-sm cursor-pointer select-none transition-all"
+                className="flex items-center gap-1.5 sm:gap-3 p-1 sm:p-1.5 pr-1 sm:pr-4.5 rounded-full bg-white border border-gray-200/50 hover:border-gray-300 shadow-sm cursor-pointer select-none transition-all"
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               >
                 {user ? (
@@ -855,7 +855,7 @@ export default function MainPage() {
                   </div>
                 )}
                 
-                <div className="text-left shrink-0">
+                <div className="text-left shrink-0 hidden sm:block">
                   <h4 className="font-heading font-black text-xs text-[#1e1f22] leading-tight flex items-center gap-1">
                     {user ? user.name : 'Guest User'}
                     <ChevronDown className="w-3 h-3 text-text-secondary" />
@@ -921,7 +921,7 @@ export default function MainPage() {
 
             {/* Right Header: Notification & Date (only shown on dashboard) */}
             {currentPage === 'dashboard' && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-4">
 
                 {/* Date Selection with calendar dropdown */}
                 <div className="relative shrink-0">
@@ -931,7 +931,7 @@ export default function MainPage() {
                       setCalendarMonth(selectedDate.getMonth());
                       setCalendarYear(selectedDate.getFullYear());
                     }}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-gray-200/50 hover:border-gray-300 font-bold text-[10px] tracking-wide uppercase shadow-sm flex items-center gap-1.5 cursor-pointer select-none text-[#1e1f22]"
+                    className="px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white border border-gray-200/50 hover:border-gray-300 font-bold text-[9px] sm:text-[10px] tracking-wide uppercase shadow-sm flex items-center gap-1 sm:gap-1.5 cursor-pointer select-none text-[#1e1f22]"
                   >
                     <Calendar className="w-3.5 h-3.5 text-text-secondary" />
                     <span>
@@ -1046,7 +1046,7 @@ export default function MainPage() {
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-gray-200/50 hover:border-gray-300 font-bold text-xs shadow-sm flex items-center gap-1 cursor-pointer select-none text-[#1e1f22]"
+                    className="px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white border border-gray-200/50 hover:border-gray-300 font-bold text-[9px] sm:text-xs shadow-sm flex items-center gap-0.5 sm:gap-1 cursor-pointer select-none text-[#1e1f22]"
                   >
                     <span>{currentFilter}</span>
                     <ChevronDown className="w-3.5 h-3.5 text-text-secondary" />
@@ -1360,18 +1360,19 @@ export default function MainPage() {
       <div className="fixed bottom-4 right-20 z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map(toast => {
           const typeCls = toast.type === 'error' 
-            ? 'bg-accent-rose text-white border-accent-rose' 
+            ? 'bg-accent-rose border-accent-rose' 
             : toast.type === 'info'
-            ? 'bg-accent-indigo text-white border-accent-indigo'
-            : 'bg-[#15161b] border-white/10 text-white';
+            ? 'bg-accent-indigo border-accent-indigo'
+            : 'bg-[#15161b] border-white/10';
 
           return (
             <div
               key={toast.id}
               className={`px-4 py-3 rounded-2xl border shadow-lg text-xs font-bold flex items-center gap-2 pointer-events-auto transition-all animate-fade-in min-w-[200px] max-w-[320px] ${typeCls}`}
+              style={{ color: '#ffffff' }}
             >
-              <span>{toast.type === 'error' ? '✕' : toast.type === 'info' ? 'ℹ' : '✓'}</span>
-              <span>{toast.message}</span>
+              <span style={{ color: '#ffffff' }}>{toast.type === 'error' ? '✕' : toast.type === 'info' ? 'ℹ' : '✓'}</span>
+              <span style={{ color: '#ffffff' }}>{toast.message}</span>
             </div>
           );
         })}

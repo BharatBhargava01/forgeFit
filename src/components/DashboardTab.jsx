@@ -9,6 +9,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
   const [aiInsights, setAiInsights] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [hoveredGroup, setHoveredGroup] = useState(null);
+  const [activePieMuscle, setActivePieMuscle] = useState(null);
 
   // Filter logs based on top-right date selector and currentFilter
   const filteredLogs = useMemo(() => {
@@ -557,35 +558,59 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
   // Concurrency helper for donut/energy calculations
   const muscleCaloriesData = useMemo(() => {
     const stats = {};
+    const weight = parseFloat(user?.profile?.weight) || 70;
+
     filteredLogs.forEach(log => {
-      if (log.exercises) {
-        log.exercises.forEach(ex => {
-          let completedSets = 0;
-          if (ex.sets) {
-            ex.sets.forEach(s => {
-              if (s.completed) completedSets++;
-            });
+      if (!log.exercises) return;
+
+      // 1. Calculate total session calories based on weight and duration
+      // 6.0 METs for resistance training, 3.5 conversion constant
+      const durationMin = (log.durationSeconds || 2700) / 60;
+      const totalSessionCalories = 6.0 * 3.5 * (weight / 200) * durationMin;
+
+      // 2. Count completed sets per muscle group in this session
+      const sessionMuscleStats = {};
+      let totalSessionMuscleSets = 0;
+
+      log.exercises.forEach(ex => {
+        let completedSets = 0;
+        if (ex.sets) {
+          ex.sets.forEach(s => {
+            if (s.completed) completedSets++;
+          });
+        }
+        if (completedSets > 0 && ex.muscles) {
+          ex.muscles.forEach(m => {
+            const name = m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
+            sessionMuscleStats[name] = (sessionMuscleStats[name] || 0) + completedSets;
+            totalSessionMuscleSets += completedSets;
+          });
+        }
+      });
+
+      // 3. Distribute session calories proportionally to each muscle group
+      if (totalSessionMuscleSets > 0) {
+        Object.entries(sessionMuscleStats).forEach(([muscleName, setsCount]) => {
+          const proportion = setsCount / totalSessionMuscleSets;
+          const caloriesBurned = proportion * totalSessionCalories;
+          if (!stats[muscleName]) {
+            stats[muscleName] = { sets: 0, calories: 0 };
           }
-          if (completedSets > 0 && ex.muscles) {
-            ex.muscles.forEach(m => {
-              const name = m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
-              stats[name] = (stats[name] || 0) + completedSets;
-            });
-          }
+          stats[muscleName].sets += setsCount;
+          stats[muscleName].calories += caloriesBurned;
         });
       }
     });
 
-    const KCAL_PER_SET = 30; // 30 kcal per completed set
-    const data = Object.entries(stats).map(([muscle, sets]) => ({
+    const data = Object.entries(stats).map(([muscle, item]) => ({
       muscle,
-      sets,
-      calories: sets * KCAL_PER_SET
+      sets: item.sets,
+      calories: Math.round(item.calories)
     }));
 
     data.sort((a, b) => b.calories - a.calories);
     return data;
-  }, [filteredLogs]);
+  }, [filteredLogs, user]);
 
   const topMuscleGroup = useMemo(() => {
     if (muscleCaloriesData.length === 0) return null;
@@ -639,6 +664,12 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       };
     });
   }, [top3MuscleGroups]);
+
+  const currentSelectedMuscle = useMemo(() => {
+    if (pieSlices.length === 0) return null;
+    if (!activePieMuscle) return pieSlices[0];
+    return pieSlices.find(m => m.muscle === activePieMuscle) || pieSlices[0];
+  }, [pieSlices, activePieMuscle]);
 
   const dynamicEnergyWorkouts = useMemo(() => {
     if (muscleCaloriesData.length > 0) {
@@ -764,10 +795,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       {/* 1. Header Panel */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-[#1e1f22] tracking-tight">
+          <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
             Health & Fitness <span className="text-gradient">Dashboard</span>
           </h2>
-          <p className="text-text-secondary mt-2 font-semibold">
+          <p className="text-text-secondary mt-2 text-xs sm:text-sm">
             Track workouts, energy expenditure, target muscle groups, and training trends in one place.
           </p>
         </div>
@@ -857,16 +888,21 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
             <svg width="180" height="180" viewBox="0 0 180 180" className="select-none">
               {pieSlices.length > 0 ? (
                 <>
-                  {pieSlices.map((slice, idx) => (
-                    <path
-                      key={idx}
-                      d={slice.pathData}
-                      fill={slice.color}
-                      strokeWidth="1.5"
-                      className="donut-slice-path transition-opacity hover:opacity-90 cursor-pointer"
-                      title={`${slice.muscle}: ${slice.calories} kcal (${slice.percent}%)`}
-                    />
-                  ))}
+                  {pieSlices.map((slice, idx) => {
+                    const isSelected = currentSelectedMuscle && currentSelectedMuscle.muscle === slice.muscle;
+                    return (
+                      <path
+                        key={idx}
+                        d={slice.pathData}
+                        fill={slice.color}
+                        stroke={isSelected ? "#ffffff" : "none"}
+                        strokeWidth={isSelected ? "2" : "0"}
+                        className={`donut-slice-path transition-all hover:opacity-95 cursor-pointer origin-center ${isSelected ? 'scale-[1.03] drop-shadow-lg' : 'opacity-85 hover:opacity-100'}`}
+                        onClick={() => setActivePieMuscle(slice.muscle)}
+                        title={`${slice.muscle}: ${slice.calories} kcal (${slice.percent}%)`}
+                      />
+                    );
+                  })}
                   <circle cx="90" cy="90" r="35" className="donut-center-circle fill-[#12121a]" />
                 </>
               ) : (
@@ -903,24 +939,22 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
           {/* Breakdown progress bars */}
           <div className="space-y-3 pt-2">
-            {top3MuscleGroups.length > 0 ? (
-              top3MuscleGroups.map((group, idx) => {
-                const pct = Math.min(100, Math.round((group.sets / 12) * 100));
-                return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs font-bold text-[#ededed]">
-                      <span>{pct}%</span>
-                      <span className="flex items-center gap-1.5 font-medium text-[#a0a0b8] font-semibold">
-                        {group.muscle} ({group.calories} kcal)
-                        <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: group.color }} />
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-[#161624]/60 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: group.color }} />
-                    </div>
-                  </div>
-                );
-              })
+            {currentSelectedMuscle ? (
+              <div className="space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between text-xs font-bold text-[#ededed]">
+                  <span>{currentSelectedMuscle.percent}% share</span>
+                  <span className="flex items-center gap-1.5 font-medium text-[#a0a0b8] font-semibold">
+                    {currentSelectedMuscle.muscle} ({currentSelectedMuscle.calories} kcal)
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: currentSelectedMuscle.color }} />
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-[#161624]/60 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${currentSelectedMuscle.percent}%`, backgroundColor: currentSelectedMuscle.color }} />
+                </div>
+                <div className="text-[10px] text-text-muted text-right italic mt-1.5">
+                  Click on other pie slices to inspect their energy share.
+                </div>
+              </div>
             ) : (
               <div className="text-center py-6 text-xs text-text-muted italic">
                 No muscle energy burn recorded.

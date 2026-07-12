@@ -155,7 +155,7 @@ Keep the tone encouraging, structured, and easy to read.`;
       {/* Title */}
       <div>
         <h2 className="font-heading font-extrabold text-3xl text-white tracking-tight">
-          Nutrition & Meal Planning
+          Nutrition & Meal <span className="text-gradient">Planning</span>
         </h2>
         <p className="text-[#a0a0b8] text-xs sm:text-sm font-medium mt-0.5">
           Plan meals, track macro distribution, and generate AI meal routines.

@@ -189,7 +189,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, showToast })
         {/* Google OAuth Button */}
         <button
           onClick={handleGoogleLogin}
-          className="w-full py-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white font-bold transition-all flex items-center justify-center gap-3 cursor-pointer"
+          className="w-full py-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-[#ededed] font-bold transition-all flex items-center justify-center gap-3 cursor-pointer"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
