@@ -261,7 +261,7 @@ export default function LibraryTab({ onStartWorkout, onInspectWorkout, onInspect
                 {onInspectWorkout && (
                   <button
                     onClick={() => onInspectWorkout(w)}
-                    className="flex-grow py-2 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="flex-grow py-2 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[#ededed] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Sliders className="w-4 h-4" />
                     Customize

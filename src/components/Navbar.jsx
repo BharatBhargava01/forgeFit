@@ -10,7 +10,6 @@ export default function Navbar({ currentPage, onNavigate, user, onSignInClick, o
     { id: 'planner', label: 'Planner' },
     { id: 'library', label: 'Library' },
     { id: 'create', label: 'Create' },
-    { id: 'analytics', label: 'Analytics' },
   ] : [
     { id: 'home', label: 'Home' },
     { id: 'planner', label: 'Planner' },

@@ -42,6 +42,11 @@ class UsersModel {
     return result.rows[0];
   }
 
+  static async delete(id) {
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    return result.rows[0];
+  }
+
   /**
    * Automatically assign any database records without a user_id to this user,
    * but ONLY if this is the first and only user in the database.

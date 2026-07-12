@@ -688,7 +688,7 @@ export default function CreateTab({ showToast, refreshCache }) {
               </p>
               <button
                 onClick={() => handleOpenPicker('workout', workoutExercises)}
-                className="mt-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold cursor-pointer"
+                className="mt-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[#ededed] text-xs font-semibold cursor-pointer"
               >
                 ➕ Pick First Exercises
               </button>
@@ -718,7 +718,7 @@ export default function CreateTab({ showToast, refreshCache }) {
             </div>
             <button
               onClick={handleAddDay}
-              className="w-full md:w-auto px-6 py-3 rounded-xl bg-white/5 border border-white/15 hover:bg-white/10 text-white font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full md:w-auto px-6 py-3 rounded-xl bg-white/5 border border-white/15 hover:bg-white/10 text-[#ededed] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Add Day
@@ -852,7 +852,7 @@ export default function CreateTab({ showToast, refreshCache }) {
               </p>
               <button
                 onClick={handleAddDay}
-                className="mt-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold cursor-pointer"
+                className="mt-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[#ededed] text-xs font-semibold cursor-pointer"
               >
                 ➕ Add First Day
               </button>

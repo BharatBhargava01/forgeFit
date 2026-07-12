@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import UsersModel from '@/models/users.model';
 import { getUserIdFromRequest } from '@/utils/auth';
 
@@ -43,6 +44,28 @@ export async function PUT(request) {
     return NextResponse.json(updatedUser);
   } catch (err) {
     console.error('Update profile error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    const userId = await getUserIdFromRequest();
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const deleted = await UsersModel.delete(userId);
+    if (!deleted) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.delete('token');
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Delete account error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

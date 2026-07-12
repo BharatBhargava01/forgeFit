@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle,
-  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3
+  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X
 } from 'lucide-react';
 import { generateBlueprint } from '@/lib/generator';
 import {
@@ -24,8 +24,27 @@ export default function ProfileTab({
   motivationEnabled = false,
   motivationHours = [8, 12, 15, 18, 21],
   onToggleMotivation,
-  onToggleHour
+  onToggleHour,
+  mealRemindersEnabled = false,
+  onToggleMealReminders,
+  onSignOut,
+  onDeleteAccount,
+  themeSetting = 'light',
+  onChangeTheme
 }) {
+  const handleLogoutClick = () => {
+    if (confirm("Are you sure you want to sign out?")) {
+      onSignOut();
+    }
+  };
+
+  const handleConfirmDeleteClick = () => {
+    if (confirmEmail !== user?.email) return;
+    if (confirm("⚠️ FINAL WARNING: This will permanently delete your account and all associated data. Are you absolutely sure?")) {
+      onDeleteAccount();
+    }
+  };
+
   // Navigation inside the profile
   const [activeSubTab, setActiveSubTab] = useState('overview'); // 'overview', 'workouts', 'routines', 'history', 'settings'
 
@@ -33,15 +52,97 @@ export default function ProfileTab({
   const [savedWorkouts, setSavedWorkouts] = useState([]);
   const [savedRoutines, setSavedRoutines] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [mealLogs, setMealLogs] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Search filter for workouts
   const [searchQuery, setSearchQuery] = useState('');
 
+  // History and logs filtering
+  const [logFilter, setLogFilter] = useState('all'); // 'all', 'workout', 'meal'
+
+  // Log activity menu states
+  const [logMenuOpen, setLogMenuOpen] = useState(false);
+  const [isAddMealOpen, setIsAddMealOpen] = useState(false);
+  const [mealType, setMealType] = useState('Breakfast');
+  const [mealName, setMealName] = useState('');
+  const [mealCalories, setMealCalories] = useState('');
+  const [mealProtein, setMealProtein] = useState('');
+  const [mealCarbs, setMealCarbs] = useState('');
+  const [mealFats, setMealFats] = useState('');
+
+  const handleAddMealSubmit = (e) => {
+    e.preventDefault();
+    if (!mealName || !mealCalories) {
+      showToast('Please fill in meal name and calories.', 'error');
+      return;
+    }
+
+    const cals = parseInt(mealCalories) || 0;
+    const prot = parseInt(mealProtein) || 0;
+    const carbsVal = mealCarbs !== '' ? (parseInt(mealCarbs) || 0) : Math.round((cals * 0.4) / 4);
+    const fatsVal = mealFats !== '' ? (parseInt(mealFats) || 0) : Math.round((cals * 0.35) / 9);
+
+    const newMeal = {
+      id: Date.now().toString(),
+      type: mealType,
+      name: mealName,
+      calories: cals,
+      protein: prot,
+      carbs: carbsVal,
+      fats: fatsVal
+    };
+
+    const saved = localStorage.getItem('wg_meals_log');
+    let mealsList = [];
+    if (saved) {
+      try {
+        mealsList = JSON.parse(saved);
+      } catch (err) {
+        mealsList = [];
+      }
+    }
+    const updated = [...mealsList, newMeal];
+    localStorage.setItem('wg_meals_log', JSON.stringify(updated));
+    setMealLogs(updated);
+    setIsAddMealOpen(false);
+    showToast(`Logged ${mealName} successfully! 🍏`, 'success');
+  };
+
+  const combinedLogs = useMemo(() => {
+    const workoutItems = logs.map(log => ({
+      ...log,
+      logType: 'workout',
+      timestamp: new Date(log.loggedAt || log.date).getTime()
+    }));
+
+    const mealItems = mealLogs.map(meal => {
+      let dateObj = new Date();
+      if (meal.id && meal.id.length > 5 && !isNaN(parseInt(meal.id))) {
+        dateObj = new Date(parseInt(meal.id));
+      }
+      return {
+        ...meal,
+        logType: 'meal',
+        timestamp: dateObj.getTime(),
+        loggedAt: dateObj.toISOString()
+      };
+    });
+
+    return [...workoutItems, ...mealItems].sort((a, b) => b.timestamp - a.timestamp);
+  }, [logs, mealLogs]);
+
+  const filteredCombinedLogs = useMemo(() => {
+    if (logFilter === 'all') return combinedLogs;
+    return combinedLogs.filter(item => item.logType === logFilter);
+  }, [combinedLogs, logFilter]);
+
   // Expandable logs & manual entry state
   const [expandedLogId, setExpandedLogId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
 
   // Form states
   const [age, setAge] = useState('');
@@ -72,10 +173,40 @@ export default function ProfileTab({
       setSavedWorkouts(wList || []);
       setSavedRoutines(rList || []);
       setLogs(lList || []);
+
+      // Load meal logs
+      const savedMeals = localStorage.getItem('wg_meals_log');
+      if (savedMeals) {
+        try {
+          setMealLogs(JSON.parse(savedMeals));
+        } catch (e) {
+          setMealLogs([]);
+        }
+      } else {
+        setMealLogs([]);
+      }
     } catch (err) {
       console.error('Failed to load storage items inside ProfileTab:', err);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const handleDeleteMealLog = (mealId, e) => {
+    if (e) e.stopPropagation();
+    if (confirm('Are you sure you want to delete this meal log?')) {
+      const saved = localStorage.getItem('wg_meals_log');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const updated = parsed.filter(m => m.id !== mealId);
+          localStorage.setItem('wg_meals_log', JSON.stringify(updated));
+          setMealLogs(updated);
+          showToast('Meal log deleted successfully.', 'success');
+        } catch (e) {
+          showToast('Failed to delete meal log.', 'error');
+        }
+      }
     }
   };
 
@@ -667,12 +798,12 @@ export default function ProfileTab({
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="glass-card rounded-2xl p-12 border border-white/5 space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/5 text-text-muted border border-white/5 flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <div className="bg-[#12121a] rounded-2xl p-12 border border-white/10 shadow-sm space-y-4 text-white">
+          <div className="w-16 h-16 rounded-2xl bg-[#161624] text-[#6a6a80] border border-white/10 flex items-center justify-center text-3xl mx-auto shadow-inner">
             👤
           </div>
           <h3 className="font-heading font-bold text-xl text-white">Please Sign In</h3>
-          <p className="text-text-secondary text-sm max-w-xs mx-auto">
+          <p className="text-[#a0a0b8] text-sm max-w-xs mx-auto">
             You need to be signed in to view and manage your fitness profile, saved library, achievements, and training history.
           </p>
         </div>
@@ -684,7 +815,7 @@ export default function ProfileTab({
     <div className="max-w-6xl mx-auto px-4 py-8 animate-slide-up">
       
       {/* 1. Header Profile Dashboard Widget */}
-      <div className="glass-card rounded-3xl p-6 border border-white/5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 mb-8 relative overflow-hidden bg-gradient-to-r from-bg-card via-bg-card to-accent-indigo/10">
+      <div className="bg-[#12121a] rounded-3xl p-6 border border-white/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 mb-8 relative overflow-hidden text-white">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
           {user.avatar_url ? (
             <img 
@@ -700,7 +831,7 @@ export default function ProfileTab({
           )}
           <div className="space-y-1">
             <h3 className="font-heading font-black text-2xl text-white">{user.name}</h3>
-            <p className="text-xs text-text-secondary">{user.email}</p>
+            <p className="text-xs text-[#a0a0b8]">{user.email}</p>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-accent-purple/20 border border-accent-purple/30 text-accent-purple">
                 {fitnessLevel}
@@ -713,28 +844,28 @@ export default function ProfileTab({
         </div>
 
         {/* Dynamic User Stats overview */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-6 bg-black/25 border border-white/5 rounded-2xl p-4 w-full md:w-auto shadow-inner">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 bg-[#161624] border border-white/10 rounded-2xl p-4 w-full md:w-auto shadow-inner text-white">
           <div className="text-center min-w-[70px]">
             <span className="text-xl font-heading font-black text-white block">{metrics?.totalWorkouts || 0}</span>
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mt-1">Logs</span>
+            <span className="text-[10px] text-[#a0a0b8] font-bold uppercase tracking-wider block mt-1">Logs</span>
           </div>
-          <div className="text-center min-w-[70px] border-x border-white/5 px-2">
+          <div className="text-center min-w-[70px] border-x border-white/10 px-2">
             <span className="text-xl font-heading font-black text-white block">
               {metrics?.totalVolumeLifted ? (metrics.totalVolumeLifted >= 1000 ? `${(metrics.totalVolumeLifted / 1000).toFixed(1)}k` : metrics.totalVolumeLifted) : 0} kg
             </span>
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mt-1">Lifted</span>
+            <span className="text-[10px] text-[#a0a0b8] font-bold uppercase tracking-wider block mt-1">Lifted</span>
           </div>
           <div className="text-center min-w-[70px]">
             <span className="text-xl font-heading font-black text-white block">
               {metrics?.totalDurationSeconds ? Math.round(metrics.totalDurationSeconds / 60) : 0}m
             </span>
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mt-1">Time</span>
+            <span className="text-[10px] text-[#a0a0b8] font-bold uppercase tracking-wider block mt-1">Time</span>
           </div>
         </div>
       </div>
 
       {/* 2. Sub-Tabs Selector */}
-      <div className="flex bg-white/5 border border-white/5 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full scrollbar-thin">
+      <div className="flex bg-[#161624] border border-white/10 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full scrollbar-thin">
         {[
           { id: 'overview', label: 'Overview', icon: Award },
           { id: 'workouts', label: 'Saved Workouts', icon: Dumbbell },
@@ -751,7 +882,7 @@ export default function ProfileTab({
               className={`px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
                 active
                   ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-md font-bold'
-                  : 'text-text-secondary hover:text-white hover:bg-white/3'
+                  : 'text-[#a0a0b8] hover:text-white hover:bg-white/5'
               }`}
             >
               <IconComponent className="w-4 h-4" />
@@ -769,14 +900,14 @@ export default function ProfileTab({
           <div className="space-y-6">
             
             {/* Gamification Dashboard (XP progress & weekly streak) */}
-            <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-gradient-to-r from-bg-card via-bg-card to-accent-purple/5">
+            <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-6 items-center text-white">
               
               {/* Level Progress Circle / Details (Col 7) */}
               <div className="md:col-span-7 flex flex-col sm:flex-row items-center gap-6">
                 {/* Circular indicator */}
                 <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
                   <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-                    <circle cx="48" cy="48" r="42" stroke="rgba(255,255,255,0.05)" strokeWidth="6" fill="transparent" />
+                    <circle cx="48" cy="48" r="42" stroke="var(--heatmap-empty-stroke, rgba(255,255,255,0.08))" strokeWidth="6" fill="transparent" />
                     <circle cx="48" cy="48" r="42" stroke="url(#levelGradient)" strokeWidth="6" fill="transparent"
                       strokeDasharray="264"
                       strokeDashoffset={264 - (264 * gamification.progressPercent) / 100}
@@ -790,7 +921,7 @@ export default function ProfileTab({
                     </defs>
                   </svg>
                   <div className="flex flex-col items-center select-none z-10">
-                    <span className="text-[10px] text-text-secondary uppercase font-bold tracking-wider">Level</span>
+                    <span className="text-[10px] text-[#a0a0b8] uppercase font-bold tracking-wider">Level</span>
                     <span className="text-3xl font-heading font-black text-white">{gamification.level}</span>
                   </div>
                 </div>
@@ -800,17 +931,17 @@ export default function ProfileTab({
                   <span className="text-xl font-heading font-black text-white flex items-center justify-center sm:justify-start gap-2">
                     {gamification.title}
                   </span>
-                  <p className="text-xs text-text-secondary leading-relaxed max-w-sm">
+                  <p className="text-xs text-[#a0a0b8] leading-relaxed max-w-sm">
                     {gamification.desc}
                   </p>
                   
                   {/* Horizontal progress tracker */}
                   <div className="space-y-1 pt-1.5">
-                    <div className="flex justify-between text-[10px] font-bold text-text-muted">
+                    <div className="flex justify-between text-[10px] font-bold text-[#6a6a80]">
                       <span>XP Progress</span>
                       <span>{gamification.currentLevelXP} / 1000 XP</span>
                     </div>
-                    <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="w-full h-1.5 rounded-full bg-[#161624] overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple rounded-full"
                         style={{ width: `${gamification.progressPercent}%` }}
                       ></div>
@@ -820,7 +951,7 @@ export default function ProfileTab({
               </div>
 
               {/* Consistency Streaks & Checkmarks (Col 5) */}
-              <div className="md:col-span-5 border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-6 space-y-4">
+              <div className="md:col-span-5 border-t md:border-t-0 md:border-l border-white/10 pt-6 md:pt-0 md:pl-6 space-y-4">
                 
                 {/* Streak counter */}
                 <div className="flex items-center gap-3">
@@ -828,7 +959,7 @@ export default function ProfileTab({
                     🔥
                   </div>
                   <div>
-                    <span className="text-[10px] text-text-secondary uppercase font-bold tracking-wider block">Consistency Streak</span>
+                    <span className="text-[10px] text-[#a0a0b8] uppercase font-bold tracking-wider block">Consistency Streak</span>
                     <span className="text-base font-heading font-extrabold text-white flex items-center gap-1.5">
                       {gamification.streak} {gamification.streak === 1 ? 'Active Day' : 'Consecutive Days'}
                     </span>
@@ -837,15 +968,15 @@ export default function ProfileTab({
 
                 {/* Weekly calendar checkboxes */}
                 <div className="space-y-2">
-                  <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider block">Weekly Consistency</span>
+                  <span className="text-[9px] text-[#6a6a80] font-bold uppercase tracking-wider block">Weekly Consistency</span>
                   <div className="grid grid-cols-7 gap-1">
                     {gamification.weekDaysStatus.map((day, idx) => (
                       <div key={idx} className="flex flex-col items-center gap-1">
-                        <span className="text-[8px] text-text-muted font-extrabold uppercase">{day.name}</span>
+                        <span className="text-[8px] text-[#6a6a80] font-extrabold uppercase">{day.name}</span>
                         <div className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
                           day.active
                             ? 'bg-accent-emerald/20 border-accent-emerald/30 text-accent-emerald shadow-lg shadow-accent-emerald/5'
-                            : 'bg-white/2 border-white/5 text-text-secondary'
+                            : 'bg-[#161624] border-white/5 text-[#a0a0b8]'
                         }`}
                           title={`${day.name} ${day.dayOfMonth} ${day.active ? '(Completed)' : '(No log)'}`}
                         >
@@ -866,12 +997,12 @@ export default function ProfileTab({
             <div className="lg:col-span-7 space-y-6">
               
               {(!weight || !height || !age) ? (
-                <div className="glass-card rounded-2xl p-10 text-center border border-white/5 shadow-xl space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/5 text-text-muted flex items-center justify-center text-2xl mx-auto border border-white/5">
+                <div className="bg-[#12121a] rounded-2xl p-10 text-center border border-white/10 shadow-sm space-y-4 text-white">
+                  <div className="w-12 h-12 rounded-xl bg-[#161624] text-[#6a6a80] border border-white/10 flex items-center justify-center text-2xl mx-auto shadow-inner">
                     📊
                   </div>
                   <h3 className="font-heading font-bold text-white text-base">Metrics Required</h3>
-                  <p className="text-text-secondary text-xs max-w-xs mx-auto">
+                  <p className="text-[#a0a0b8] text-xs max-w-xs mx-auto">
                     Fill in your age, weight, and height in the <strong>Settings</strong> tab to unlock real-time physiological analytics.
                   </p>
                 </div>
@@ -879,30 +1010,30 @@ export default function ProfileTab({
                 <>
                   {/* AI Tailored Program Blueprint Card */}
                   {aiBlueprint ? (
-                    <div className="glass-card rounded-2xl p-6 border border-accent-purple/20 shadow-xl space-y-6 animate-fade-in relative overflow-hidden">
+                    <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-6 animate-fade-in relative overflow-hidden text-white">
                       <div className="absolute right-0 top-0 w-16 h-16 bg-accent-purple/10 rounded-bl-full flex items-center justify-center text-lg font-bold">
                         ✨
                       </div>
 
-                      <div className="border-b border-white/5 pb-4 space-y-1">
+                      <div className="border-b border-white/10 pb-4 space-y-1">
                         <h3 className="font-heading font-black text-xl text-white flex items-center gap-2">
                           <Award className="w-5 h-5 text-accent-emerald" />
                           AI Coach Program Blueprint
                         </h3>
-                        <p className="text-xs text-text-secondary">Fully personalized training structure generated by your AI trainer</p>
+                        <p className="text-xs text-[#a0a0b8]">Fully personalized training structure generated by your AI trainer</p>
                       </div>
 
                       <div className="space-y-4">
-                        <div className="p-4 rounded-xl bg-white/3 border border-white/5 space-y-2.5">
+                        <div className="p-4 rounded-xl bg-[#161624] border border-white/5 space-y-2.5">
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-bold text-accent-emerald uppercase tracking-wider">Recommended Split</span>
                             <span className="text-xs font-black text-white bg-accent-emerald/10 border border-accent-emerald/20 px-2 py-0.5 rounded-full">{aiBlueprint.recommendedSplit}</span>
                           </div>
-                          <div className="w-full h-px bg-white/5"></div>
-                          <div className="grid grid-cols-1 gap-1 text-xs text-white/90">
+                          <div className="w-full h-px bg-white/10"></div>
+                          <div className="grid grid-cols-1 gap-1 text-xs text-[#a0a0b8]">
                             {aiBlueprint.weeklySchedule?.map((dayText, idx) => (
-                              <div key={idx} className="flex justify-between py-0.5 border-b border-white/2 last:border-0">
-                                <span className="text-text-secondary font-medium">{dayText.split(':')[0]}</span>
+                              <div key={idx} className="flex justify-between py-0.5 border-b border-white/5 last:border-0">
+                                <span className="text-[#a0a0b8] font-medium">{dayText.split(':')[0]}</span>
                                 <span className="text-white font-bold text-right">{dayText.split(':').slice(1).join(':').trim()}</span>
                               </div>
                             ))}
@@ -910,27 +1041,27 @@ export default function ProfileTab({
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3.5 rounded-xl bg-[#0c0c12] border border-white/5 text-center">
-                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Daily Calories</span>
+                          <div className="p-3.5 rounded-xl bg-[#161624] border border-white/5 text-center">
+                            <span className="text-[10px] font-bold text-[#6a6a80] uppercase tracking-wider block">Daily Calories</span>
                             <span className="text-xl font-black text-accent-purple block mt-1">{aiBlueprint.targetCalories} kcal</span>
                           </div>
-                          <div className="p-3.5 rounded-xl bg-[#0c0c12] border border-white/5 text-center">
-                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Daily Protein</span>
+                          <div className="p-3.5 rounded-xl bg-[#161624] border border-white/5 text-center">
+                            <span className="text-[10px] font-bold text-[#6a6a80] uppercase tracking-wider block">Daily Protein</span>
                             <span className="text-xl font-black text-accent-cyan block mt-1">{aiBlueprint.proteinGrams}g</span>
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-white/2 border border-white/5 space-y-1.5 text-xs">
-                          <h4 className="font-bold text-text-secondary flex items-center gap-1.5">
+                        <div className="p-4 rounded-xl bg-[#161624] border border-white/5 space-y-1.5 text-xs">
+                          <h4 className="font-bold text-[#a0a0b8] flex items-center gap-1.5">
                             🩺 Coach Safety & Setup boundaries
                           </h4>
-                          <p className="text-text-secondary leading-relaxed italic">
+                          <p className="text-[#a0a0b8] leading-relaxed italic">
                             "{aiBlueprint.coachAdvice}"
                           </p>
                         </div>
 
                         <div className="p-3.5 rounded-xl border border-accent-purple/20 bg-accent-purple/5 text-center text-xs">
-                          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Active Milestone</span>
+                          <span className="text-[10px] font-bold text-[#a0a0b8] uppercase tracking-wider block">Active Milestone</span>
                           <span className="font-bold text-white mt-1 block">🏆 {aiBlueprint.keyMilestone}</span>
                         </div>
 
@@ -938,7 +1069,7 @@ export default function ProfileTab({
                           type="button"
                           onClick={handleRegenerateBlueprint}
                           disabled={analyzingProfile}
-                          className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="w-full py-2.5 rounded-xl bg-[#161624] border border-white/10 hover:bg-white/5 text-[#ededed] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                         >
                           <span>⚡</span>
                           {analyzingProfile ? 'Regenerating...' : 'Regenerate AI Blueprint'}
@@ -946,12 +1077,12 @@ export default function ProfileTab({
                       </div>
                     </div>
                   ) : (
-                    <div className="glass-card rounded-2xl p-6 border border-accent-purple/20 shadow-xl space-y-4 animate-fade-in text-center">
+                    <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-4 animate-fade-in text-center text-white">
                       <div className="w-12 h-12 rounded-xl bg-accent-purple/10 text-accent-purple flex items-center justify-center text-xl mx-auto border border-accent-purple/20">
                         🧠
                       </div>
                       <h3 className="font-heading font-bold text-white text-base">No AI Program Blueprint Generated</h3>
-                      <p className="text-xs text-text-secondary max-w-sm mx-auto leading-relaxed">
+                      <p className="text-xs text-[#a0a0b8] max-w-sm mx-auto leading-relaxed">
                         Complete your metrics in the Settings tab, then generate your custom split schedule and coaching suggestions here.
                       </p>
                       <button
@@ -968,20 +1099,20 @@ export default function ProfileTab({
 
                   {/* BMI Widget */}
                   {bmi && (
-                    <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
+                    <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-4 text-white">
                       <h3 className="font-heading font-bold text-lg text-white flex items-center gap-2">
                         <Scale className="w-5 h-5 text-accent-cyan" />
                         Body Mass Index (BMI)
                       </h3>
                       <div className="flex items-center gap-6">
-                        <div className="text-4xl font-heading font-black text-white bg-white/5 border border-white/10 rounded-2xl w-20 h-20 flex items-center justify-center shadow-inner shrink-0">
+                        <div className="text-4xl font-heading font-black text-white bg-[#161624] border border-white/10 w-20 h-20 flex items-center justify-center shadow-inner shrink-0 rounded-2xl">
                           {bmi}
                         </div>
                         <div>
                           <span className={`px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${bmiCat?.color}`}>
                             {bmiCat?.label}
                           </span>
-                          <p className="text-xs text-text-secondary mt-3 leading-relaxed">
+                          <p className="text-xs text-[#a0a0b8] mt-3 leading-relaxed">
                             BMI is a general screening indicator of body density based on weight and height metrics.
                           </p>
                         </div>
@@ -991,8 +1122,8 @@ export default function ProfileTab({
 
                   {/* Macro Targets */}
                   {macros && (
-                    <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-6">
-                      <div className="border-b border-white/5 pb-4 flex justify-between items-center">
+                    <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-6 text-white">
+                      <div className="border-b border-white/10 pb-4 flex justify-between items-center">
                         <h3 className="font-heading font-bold text-lg text-white flex items-center gap-2">
                           <Flame className="w-5 h-5 text-accent-purple" />
                           Daily Nutritional Target
@@ -1001,7 +1132,7 @@ export default function ProfileTab({
                           <span className="text-2xl font-heading font-black text-accent-purple block">
                             {macros.calories} kcal
                           </span>
-                          <span className="text-[10px] text-text-secondary uppercase font-bold tracking-wide">
+                          <span className="text-[10px] text-[#a0a0b8] uppercase font-bold tracking-wide">
                             Estimated Target
                           </span>
                         </div>
@@ -1015,9 +1146,9 @@ export default function ProfileTab({
                               <span className="w-2.5 h-2.5 rounded-full bg-accent-indigo"></span>
                               Protein (Goal-preserving)
                             </span>
-                            <span className="text-text-secondary">{macros.protein}g · {macros.protein * 4} kcal</span>
+                            <span className="text-[#a0a0b8]">{macros.protein}g · {macros.protein * 4} kcal</span>
                           </div>
-                          <div className="w-full h-2.5 rounded-full bg-white/5 overflow-hidden">
+                          <div className="w-full h-2.5 rounded-full bg-[#161624] overflow-hidden">
                             <div className="h-full bg-accent-indigo" style={{ width: `${Math.min(100, (macros.protein * 4 / macros.calories) * 100)}%` }}></div>
                           </div>
                         </div>
@@ -1029,9 +1160,9 @@ export default function ProfileTab({
                               <span className="w-2.5 h-2.5 rounded-full bg-accent-cyan"></span>
                               Carbohydrates (Energy supply)
                             </span>
-                            <span className="text-text-secondary">{macros.carbs}g · {macros.carbs * 4} kcal</span>
+                            <span className="text-[#a0a0b8]">{macros.carbs}g · {macros.carbs * 4} kcal</span>
                           </div>
-                          <div className="w-full h-2.5 rounded-full bg-white/5 overflow-hidden">
+                          <div className="w-full h-2.5 rounded-full bg-[#161624] overflow-hidden">
                             <div className="h-full bg-accent-cyan" style={{ width: `${Math.min(100, (macros.carbs * 4 / macros.calories) * 100)}%` }}></div>
                           </div>
                         </div>
@@ -1043,14 +1174,14 @@ export default function ProfileTab({
                               <span className="w-2.5 h-2.5 rounded-full bg-accent-purple"></span>
                               Fats (Hormonal baseline)
                             </span>
-                            <span className="text-text-secondary">{macros.fats}g · {macros.fats * 9} kcal</span>
+                            <span className="text-[#a0a0b8]">{macros.fats}g · {macros.fats * 9} kcal</span>
                           </div>
-                          <div className="w-full h-2.5 rounded-full bg-white/5 overflow-hidden">
+                          <div className="w-full h-2.5 rounded-full bg-[#161624] overflow-hidden">
                             <div className="h-full bg-accent-purple" style={{ width: `${Math.min(100, (macros.fats * 9 / macros.calories) * 100)}%` }}></div>
                           </div>
                         </div>
                       </div>
-                      <p className="text-[11px] text-text-muted leading-relaxed">
+                      <p className="text-[11px] text-[#6a6a80] leading-relaxed">
                         💡 Estimated using the Mifflin-St Jeor BMR formula at moderate daily activity. Protein targets body weight preservation, fats maintain hormonal balance, and carbs fill the remainder.
                       </p>
                     </div>
@@ -1061,8 +1192,8 @@ export default function ProfileTab({
 
             {/* Right side: Milestones & Achievements (Moved here from Analytics Tab) */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
-                <h3 className="font-heading font-black text-lg text-white flex items-center gap-2 pb-3 border-b border-white/5">
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-4 text-white">
+                <h3 className="font-heading font-black text-lg text-[#ededed] flex items-center gap-2 pb-3 border-b border-white/10">
                   <Award className="w-5 h-5 text-accent-purple" />
                   Milestones & Achievements
                 </h3>
@@ -1071,51 +1202,50 @@ export default function ProfileTab({
                   {achievements.map((ach) => (
                     <div
                       key={ach.id}
-                      className={`glass-card rounded-xl p-3.5 border transition-all flex items-center gap-4 ${
+                      className={`bg-[#161624] rounded-xl p-3.5 border transition-all flex items-center gap-4 ${
                         ach.unlocked
-                          ? 'border-white/10 bg-white/3'
-                          : 'border-white/5 bg-white/1 opacity-35 select-none'
+                          ? 'border-white/5 bg-[#161624]'
+                          : 'border-white/5 bg-[#161624] opacity-35 select-none'
                       }`}
                     >
                       <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-xl border ${
                         ach.unlocked
                           ? 'bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-purple/20'
-                          : 'bg-white/5 border-white/5'
+                          : 'bg-[#12121a] border-white/10'
                       }`}>
                         {ach.unlocked ? ach.icon : '🔒'}
                       </div>
                       <div className="space-y-0.5">
                         <span className="font-bold text-xs text-white block">{ach.title}</span>
-                        <span className="text-[10px] text-text-muted leading-tight block">{ach.desc}</span>
+                        <span className="text-[10px] text-[#a0a0b8] leading-tight block">{ach.desc}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       )}
 
-        {/* TAB: Saved Workouts */}
+      {/* TAB: Saved Workouts */}
         {activeSubTab === 'workouts' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-heading font-bold text-xl text-white">Saved Workout Templates</h3>
-                <p className="text-xs text-text-secondary mt-1">Manage and start your personalized workout templates.</p>
+                <p className="text-xs text-[#a0a0b8] mt-1">Manage and start your personalized workout templates.</p>
               </div>
 
               {/* Search bar */}
               <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[#6a6a80] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input 
                   type="text"
                   placeholder="Search workouts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white placeholder-text-muted focus:outline-none focus:border-accent-purple transition-all"
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#161624] border border-white/10 text-white placeholder-[#6a6a80] focus:outline-none focus:border-accent-purple transition-all"
                 />
               </div>
             </div>
@@ -1123,7 +1253,7 @@ export default function ProfileTab({
             {loadingData ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-16 bg-white/5 rounded-2xl border border-white/5"></div>
+                  <div key={i} className="h-16 bg-[#161624] rounded-2xl border border-white/10"></div>
                 ))}
               </div>
             ) : filteredWorkouts.length > 0 ? (
@@ -1132,13 +1262,13 @@ export default function ProfileTab({
                   <div
                     key={w.id}
                     onClick={() => onInspectWorkout(w)}
-                    className="glass-card rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all flex items-center justify-between gap-4 cursor-pointer glass-card-hover group"
+                    className="bg-[#12121a] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-sm text-white"
                   >
                     <div>
                       <h4 className="font-heading font-bold text-white text-base group-hover:text-accent-cyan transition-colors">
                         {w.name}
                       </h4>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6a6a80] mt-1">
                         <span>{w.totalExercises || w.exercises?.length} exercises</span>
                         <span>·</span>
                         <span>~{w.estimatedMinutes} min</span>
@@ -1156,7 +1286,7 @@ export default function ProfileTab({
                       </button>
                       <button
                         onClick={(e) => handleDeleteWorkout(w.id, e)}
-                        className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
+                        className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
                         title="Delete Workout"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1166,12 +1296,12 @@ export default function ProfileTab({
                 ))}
               </div>
             ) : (
-              <div className="glass-card rounded-2xl p-12 text-center border border-white/5 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-2xl mx-auto shadow-inner">
+              <div className="bg-[#12121a] rounded-2xl p-12 text-center border border-white/10 space-y-4 shadow-sm text-white">
+                <div className="w-14 h-14 rounded-2xl bg-[#161624] border border-white/10 flex items-center justify-center text-2xl mx-auto shadow-inner">
                   📚
                 </div>
                 <h3 className="font-heading font-bold text-white text-base">No Workouts Saved</h3>
-                <p className="text-text-secondary text-xs max-w-xs mx-auto">
+                <p className="text-[#a0a0b8] text-xs max-w-xs mx-auto">
                   Generate layouts in the Planner page and save them to build templates here.
                 </p>
               </div>
@@ -1184,13 +1314,13 @@ export default function ProfileTab({
           <div className="space-y-6">
             <div>
               <h3 className="font-heading font-bold text-xl text-white">Weekly Routine Plans</h3>
-              <p className="text-xs text-text-secondary mt-1">Select structured plans to map out your training days.</p>
+              <p className="text-xs text-[#a0a0b8] mt-1">Select structured plans to map out your training days.</p>
             </div>
 
             {loadingData ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-16 bg-white/5 rounded-2xl border border-white/5"></div>
+                  <div key={i} className="h-16 bg-[#161624] rounded-2xl border border-white/10"></div>
                 ))}
               </div>
             ) : savedRoutines.length > 0 ? (
@@ -1199,13 +1329,13 @@ export default function ProfileTab({
                   <div
                     key={r.id}
                     onClick={() => onInspectRoutine(r)}
-                    className="glass-card rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all flex items-center justify-between gap-4 cursor-pointer glass-card-hover group"
+                    className="bg-[#12121a] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-sm text-white"
                   >
                     <div>
                       <h4 className="font-heading font-bold text-white text-base group-hover:text-accent-cyan transition-colors">
                         {r.name}
                       </h4>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6a6a80] mt-1">
                         <span className="capitalize">{r.splitName || 'Custom'} split</span>
                         <span>·</span>
                         <span>{r.daysPerWeek} training days/week</span>
@@ -1215,7 +1345,7 @@ export default function ProfileTab({
                     </div>
                     <button
                       onClick={(e) => handleDeleteRoutine(r.id, e)}
-                      className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
+                      className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
                       title="Delete Routine"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1224,12 +1354,12 @@ export default function ProfileTab({
                 ))}
               </div>
             ) : (
-              <div className="glass-card rounded-2xl p-12 text-center border border-white/5 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-2xl mx-auto shadow-inner">
+              <div className="bg-[#12121a] rounded-2xl p-12 text-center border border-white/10 space-y-4 shadow-sm text-white">
+                <div className="w-14 h-14 rounded-2xl bg-[#161624] border border-white/10 flex items-center justify-center text-2xl mx-auto shadow-inner">
                   📅
                 </div>
                 <h3 className="font-heading font-bold text-white text-base">No Weekly Routines</h3>
-                <p className="text-text-secondary text-xs max-w-xs mx-auto">
+                <p className="text-[#a0a0b8] text-xs max-w-xs mx-auto">
                   Build custom routine schedules inside the Planner page and click Save.
                 </p>
               </div>
@@ -1240,143 +1370,249 @@ export default function ProfileTab({
         {/* TAB: History & Logs */}
         {activeSubTab === 'history' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
-                <h3 className="font-heading font-bold text-xl text-white">Workout Log History</h3>
-                <p className="text-xs text-text-secondary mt-1">View, delete, or manually record completed sessions.</p>
+                <h3 className="font-heading font-bold text-xl text-white">Activity & Nutrition History</h3>
+                <p className="text-xs text-[#a0a0b8] mt-1">View, filter, delete, or manually log your activities.</p>
               </div>
 
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                Log Session
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Filter Selector */}
+                <div className="flex bg-[#161624] border border-white/10 rounded-xl p-1 shrink-0">
+                  {['all', 'workout', 'meal'].map((filterVal) => (
+                    <button
+                      key={filterVal}
+                      onClick={() => setLogFilter(filterVal)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                        logFilter === filterVal
+                          ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow'
+                          : 'text-[#a0a0b8] hover:text-white'
+                      }`}
+                    >
+                      {filterVal === 'all' ? 'All Logs' : filterVal === 'workout' ? 'Workouts' : 'Meals'}
+                    </button>
+                  ))}
+                </div>
+
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setLogMenuOpen(!logMenuOpen)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  Log Activity
+                  <ChevronDown className="w-3 h-3 text-white" />
+                </button>
+
+                {logMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setLogMenuOpen(false)} />
+                    <div className="absolute right-0 mt-2.5 w-40 rounded-xl bg-white border border-gray-150 p-1.5 shadow-2xl z-50 text-[#1e1f22] animate-slide-up text-left">
+                      <button
+                        onClick={() => {
+                          setIsAddModalOpen(true);
+                          setLogMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-left"
+                      >
+                        🏋️ Log Workout
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddMealOpen(true);
+                          setLogMenuOpen(false);
+                          setMealType('Breakfast');
+                          setMealName('');
+                          setMealCalories('');
+                          setMealProtein('');
+                          setMealCarbs('');
+                          setMealFats('');
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-left mt-1"
+                      >
+                        🍏 Log Meal
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+          </div>
 
             {loadingData ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-20 bg-white/5 rounded-2xl border border-white/5"></div>
+                  <div key={i} className="h-20 bg-[#161624] rounded-2xl border border-white/10"></div>
                 ))}
               </div>
-            ) : logs.length > 0 ? (
+            ) : filteredCombinedLogs.length > 0 ? (
               <div className="space-y-4">
-                {logs.map(log => {
-                  const isExpanded = expandedLogId === log.id;
-                  let totalWeight = 0;
-                  let completedSets = 0;
-                  log.exercises?.forEach(ex => {
-                    if (Array.isArray(ex.sets)) {
-                      ex.sets.forEach(s => {
-                        if (s.completed) {
-                          completedSets++;
-                          totalWeight += (s.weight || 0);
-                        }
-                      });
-                    }
-                  });
+                {filteredCombinedLogs.map(log => {
+                  if (log.logType === 'workout') {
+                    const isExpanded = expandedLogId === log.id;
+                    let totalWeight = 0;
+                    let completedSets = 0;
+                    log.exercises?.forEach(ex => {
+                      if (Array.isArray(ex.sets)) {
+                        ex.sets.forEach(s => {
+                          if (s.completed) {
+                            completedSets++;
+                            totalWeight += (s.weight || 0);
+                          }
+                        });
+                      }
+                    });
 
-                  return (
-                    <div
-                      key={log.id}
-                      className="glass-card rounded-2xl border border-white/5 overflow-hidden transition-all animate-fade-in"
-                    >
+                    return (
                       <div
-                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                        className="p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                        key={log.id}
+                        className="bg-[#12121a] rounded-2xl border border-white/10 shadow-sm overflow-hidden transition-all animate-fade-in text-white"
                       >
-                        <div>
-                          <h4 className="font-heading font-bold text-white text-base">{log.name}</h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted mt-1 items-center">
-                            <span className="flex items-center gap-1 font-semibold text-text-secondary">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {formatDate(log.loggedAt || log.date)}
-                            </span>
-                            <span>·</span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              {formatDuration(log.durationSeconds)}
-                            </span>
-                            <span>·</span>
-                            <span>{completedSets} sets</span>
-                            {totalWeight > 0 && (
-                              <>
-                                <span>·</span>
-                                <span>{totalWeight.toLocaleString()} kg lifted</span>
-                              </>
-                            )}
+                        <div
+                          onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                          className="p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                        >
+                          <div>
+                            <h4 className="font-heading font-bold text-white text-base">{log.name}</h4>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6a6a80] mt-1 items-center">
+                              <span className="flex items-center gap-1 font-semibold text-[#a0a0b8]">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {formatDate(log.loggedAt || log.date)}
+                              </span>
+                              <span>·</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                {formatDuration(log.durationSeconds)}
+                              </span>
+                              <span>·</span>
+                              <span>{completedSets} sets</span>
+                              {totalWeight > 0 && (
+                                <>
+                                  <span>·</span>
+                                  <span>{totalWeight.toLocaleString()} kg lifted</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                              className="p-1.5 rounded text-[#a0a0b8] hover:text-white transition-colors cursor-pointer"
+                            >
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => setEditingLog(log)}
+                              className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-cyan/10 hover:text-accent-cyan border border-white/10 transition-colors cursor-pointer"
+                              title="Edit Log"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteLog(log.id, e)}
+                              className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
+                              title="Delete Log"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                            className="p-1.5 rounded text-text-secondary hover:text-white transition-colors cursor-pointer"
-                          >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditingLog(log); }}
-                            className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-cyan/10 hover:text-accent-cyan border border-white/5 transition-colors cursor-pointer"
-                            title="Edit Log"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteLog(log.id, e)}
-                            className="p-2 rounded-lg bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
-                            title="Delete Log"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {isExpanded && log.exercises && (
+                          <div className="p-5 border-t border-white/10 bg-[#161624]/30 space-y-4 animate-fade-in">
+                            {log.exercises.map((ex, exIdx) => (
+                              <div key={exIdx} className="space-y-1.5">
+                                <span className="font-bold text-white text-xs block">{ex.name}</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {Array.isArray(ex.sets) && ex.sets.map((set, sIdx) => (
+                                    <span
+                                      key={sIdx}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                        set.completed
+                                          ? 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20 font-bold'
+                                          : 'bg-[#12121a] text-[#a0a0b8] border border-white/5 line-through'
+                                      }`}
+                                    >
+                                      Set {sIdx + 1}: {set.weight}kg × {set.reps}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-
-                      {isExpanded && log.exercises && (
-                        <div className="p-5 border-t border-white/5 bg-black/30 space-y-4 animate-fade-in">
-                          {log.exercises.map((ex, exIdx) => (
-                            <div key={exIdx} className="space-y-1.5">
-                              <span className="font-bold text-white text-xs block">{ex.name}</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {Array.isArray(ex.sets) && ex.sets.map((set, sIdx) => (
-                                  <span
-                                    key={sIdx}
-                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                                      set.completed
-                                        ? 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20 font-bold'
-                                        : 'bg-white/5 text-text-muted border-white/5 line-through'
-                                    }`}
-                                  >
-                                    Set {sIdx + 1}: {set.weight}kg × {set.reps}
-                                  </span>
-                                ))}
+                    );
+                  } else {
+                    // Meal log item
+                    return (
+                      <div
+                        key={log.id}
+                        className="bg-[#12121a] rounded-2xl border border-white/10 shadow-sm overflow-hidden transition-all animate-fade-in text-white"
+                      >
+                        <div className="p-5 flex items-center justify-between gap-4 hover:bg-white/5 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-accent-purple/15 border border-accent-purple/30 flex items-center justify-center text-accent-purple text-lg shrink-0">
+                              🍏
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-accent-purple uppercase tracking-wider font-extrabold block">
+                                Meal Logged · {log.type}
+                              </span>
+                              <h4 className="font-heading font-bold text-white text-base mt-0.5">{log.name}</h4>
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6a6a80] mt-1 items-center">
+                                <span className="flex items-center gap-1 font-semibold text-[#a0a0b8]">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  {formatDate(log.loggedAt)}
+                                </span>
+                                <span>·</span>
+                                <span className="font-bold text-[#ededed]">{log.calories} kcal</span>
+                                <span>·</span>
+                                <span>P: {log.protein}g</span>
+                                <span>·</span>
+                                <span>C: {log.carbs}g</span>
+                                <span>·</span>
+                                <span>F: {log.fats}g</span>
                               </div>
                             </div>
-                          ))}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => handleDeleteMealLog(log.id, e)}
+                              className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
+                              title="Delete Meal Log"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
+                      </div>
+                    );
+                  }
                 })}
               </div>
             ) : (
-              <div className="glass-card rounded-2xl p-12 text-center border border-white/5 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-2xl mx-auto shadow-inner">
+              <div className="bg-[#12121a] rounded-2xl p-12 text-center border border-white/10 shadow-sm space-y-4 text-white">
+                <div className="w-14 h-14 rounded-2xl bg-[#161624] border border-white/10 flex items-center justify-center text-2xl mx-auto shadow-inner">
                   ⌚
                 </div>
-                <h3 className="font-heading font-bold text-white text-base">No Completed Sessions</h3>
-                <p className="text-text-secondary text-xs max-w-xs mx-auto mb-2">
-                  Completed sessions in the tracker or manual logged items will appear in this timeline.
+                <h3 className="font-heading font-bold text-white text-base">No {logFilter === 'all' ? 'Logs' : logFilter === 'workout' ? 'Workouts' : 'Meals'} Found</h3>
+                <p className="text-[#a0a0b8] text-xs max-w-xs mx-auto mb-2">
+                  {logFilter === 'all' && 'Completed sessions in the tracker, manual workouts, or logged meals will appear in this timeline.'}
+                  {logFilter === 'workout' && 'Completed sessions in the tracker or manual workouts will appear in this timeline.'}
+                  {logFilter === 'meal' && 'Logged nutritional meals will appear in this timeline.'}
                 </p>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer mx-auto"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Log Workout Manually
-                </button>
+                {logFilter !== 'meal' && (
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-white text-xs font-bold shadow hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer mx-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Log Workout Manually
+                  </button>
+                )}
               </div>
             )}
 
@@ -1390,6 +1626,137 @@ export default function ProfileTab({
               onSaveSuccess={fetchProfileData}
               showToast={showToast}
             />
+
+            {isAddMealOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in text-[#1e1f22]">
+                <div className="relative w-full max-w-md rounded-2xl bg-white border border-gray-150 p-6 shadow-2xl animate-scale-up text-left">
+                  
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                    <h3 className="font-heading font-black text-lg text-[#1e1f22] flex items-center gap-2">
+                      <span>🍏</span> Log a Meal
+                    </h3>
+                    <button
+                      onClick={() => setIsAddMealOpen(false)}
+                      className="p-1 rounded-lg hover:bg-gray-100 text-text-secondary hover:text-[#1e1f22] transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Form */}
+                  <form onSubmit={handleAddMealSubmit} className="space-y-4">
+                    
+                    {/* Meal Type */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-text-secondary" htmlFor="meal-type">Meal Type</label>
+                      <select
+                        id="meal-type"
+                        value={mealType}
+                        onChange={(e) => setMealType(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple cursor-pointer text-[#1e1f22]"
+                      >
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                      </select>
+                    </div>
+
+                    {/* Meal Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-text-secondary" htmlFor="meal-name">Meal Name</label>
+                      <input
+                        id="meal-name"
+                        type="text"
+                        placeholder="e.g. Oatmeal with fruit"
+                        value={mealName}
+                        onChange={(e) => setMealName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple text-[#1e1f22]"
+                        required
+                      />
+                    </div>
+
+                    {/* Calories */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-text-secondary" htmlFor="meal-calories">Calories (kcal)</label>
+                      <input
+                        id="meal-calories"
+                        type="number"
+                        placeholder="e.g. 350"
+                        value={mealCalories}
+                        onChange={(e) => setMealCalories(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple text-[#1e1f22]"
+                        required
+                      />
+                    </div>
+
+                    {/* Macros Grid */}
+                    <div className="grid grid-cols-3 gap-3">
+                      
+                      {/* Protein */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-text-secondary" htmlFor="meal-protein">Protein (g)</label>
+                        <input
+                          id="meal-protein"
+                          type="number"
+                          placeholder="e.g. 15"
+                          value={mealProtein}
+                          onChange={(e) => setMealProtein(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple text-[#1e1f22]"
+                        />
+                      </div>
+
+                      {/* Carbs */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-text-secondary" htmlFor="meal-carbs">Carbs (g)</label>
+                        <input
+                          id="meal-carbs"
+                          type="number"
+                          placeholder="e.g. 50"
+                          value={mealCarbs}
+                          onChange={(e) => setMealCarbs(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple text-[#1e1f22]"
+                        />
+                      </div>
+
+                      {/* Fats */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-text-secondary" htmlFor="meal-fats">Fats (g)</label>
+                        <input
+                          id="meal-fats"
+                          type="number"
+                          placeholder="e.g. 8"
+                          value={mealFats}
+                          onChange={(e) => setMealFats(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-accent-purple text-[#1e1f22]"
+                        />
+                      </div>
+
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddMealOpen(false)}
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 font-bold text-xs transition-colors cursor-pointer text-center text-[#1e1f22]"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan text-[#ededed] font-extrabold text-xs shadow hover:opacity-90 transition-all cursor-pointer text-center text-white"
+                      >
+                        Save Meal
+                      </button>
+                    </div>
+
+                  </form>
+
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1399,8 +1766,8 @@ export default function ProfileTab({
             
             {/* General metrics inputs */}
             <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
-              <div className="glass-card rounded-2xl p-6 space-y-6 shadow-xl border border-white/5">
-                <h3 className="font-heading font-bold text-lg text-white border-b border-white/5 pb-3 flex items-center gap-2">
+              <div className="bg-[#12121a] rounded-2xl p-6 space-y-6 shadow-sm border border-white/10 text-white">
+                <h3 className="font-heading font-bold text-lg text-[#ededed] border-b border-white/10 pb-3 flex items-center gap-2">
                   <User className="w-5 h-5 text-accent-purple" />
                   Physiological & Setup Metrics
                 </h3>
@@ -1408,7 +1775,7 @@ export default function ProfileTab({
                 <div className="grid grid-cols-2 gap-4">
                   {/* Age */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-age">
+                    <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-age">
                       Age (years)
                     </label>
                     <input
@@ -1417,21 +1784,21 @@ export default function ProfileTab({
                       placeholder="e.g. 28"
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white placeholder-[#6a6a80] focus:outline-none focus:border-accent-purple transition-colors text-sm"
                       required
                     />
                   </div>
 
                   {/* Gender */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-gender">
+                    <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-gender">
                       Gender
                     </label>
                     <select
                       id="profile-gender"
                       value={gender}
                       onChange={(e) => setGender(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
                     >
                       <option value="male" className="bg-[#12121a] text-white">Male</option>
                       <option value="female" className="bg-[#12121a] text-white">Female</option>
@@ -1441,7 +1808,7 @@ export default function ProfileTab({
 
                   {/* Weight */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-weight">
+                    <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-weight">
                       Current Weight (kg)
                     </label>
                     <input
@@ -1451,14 +1818,14 @@ export default function ProfileTab({
                       placeholder="e.g. 75"
                       value={weight}
                       onChange={(e) => setWeight(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white placeholder-[#6a6a80] focus:outline-none focus:border-accent-purple transition-colors text-sm"
                       required
                     />
                   </div>
 
                   {/* Height */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-height">
+                    <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-height">
                       Height (cm)
                     </label>
                     <input
@@ -1467,14 +1834,14 @@ export default function ProfileTab({
                       placeholder="e.g. 178"
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white placeholder-[#6a6a80] focus:outline-none focus:border-accent-purple transition-colors text-sm"
                       required
                     />
                   </div>
 
                   {/* Target Weight */}
                   <div className="space-y-2 col-span-2">
-                    <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-target-weight">
+                    <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-target-weight">
                       Target Weight (kg)
                     </label>
                     <input
@@ -1484,7 +1851,7 @@ export default function ProfileTab({
                       placeholder="e.g. 70"
                       value={targetWeight}
                       onChange={(e) => setTargetWeight(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white placeholder-[#6a6a80] focus:outline-none focus:border-accent-purple transition-colors text-sm"
                       required
                     />
                   </div>
@@ -1492,52 +1859,52 @@ export default function ProfileTab({
 
                 {/* Goal Select */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-goal">
+                  <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-goal">
                     Training Goal
                   </label>
                   <select
                     id="profile-goal"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
                   >
-                    <option value="hypertrophy" className="bg-[#12121a]">Hypertrophy (Muscle Growth)</option>
-                    <option value="strength" className="bg-[#12121a]">Strength (Max Power)</option>
-                    <option value="endurance" className="bg-[#12121a]">Endurance (Stamina)</option>
-                    <option value="fat-loss" className="bg-[#12121a]">Fat Loss (Definition)</option>
-                    <option value="powerlifting" className="bg-[#12121a]">Powerlifting (Max Strength)</option>
-                    <option value="cardio-conditioning" className="bg-[#12121a]">Cardio / Conditioning</option>
-                    <option value="mobility-flexibility" className="bg-[#12121a]">Mobility / Flexibility</option>
+                    <option value="hypertrophy" className="bg-[#12121a] text-white">Hypertrophy (Muscle Growth)</option>
+                    <option value="strength" className="bg-[#12121a] text-white">Strength (Max Power)</option>
+                    <option value="endurance" className="bg-[#12121a] text-white">Endurance (Stamina)</option>
+                    <option value="fat-loss" className="bg-[#12121a] text-white">Fat Loss (Definition)</option>
+                    <option value="powerlifting" className="bg-[#12121a] text-white">Powerlifting (Max Strength)</option>
+                    <option value="cardio-conditioning" className="bg-[#12121a] text-white">Cardio / Conditioning</option>
+                    <option value="mobility-flexibility" className="bg-[#12121a] text-white">Mobility / Flexibility</option>
                   </select>
                 </div>
 
                 {/* Fitness Level */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-level">
+                  <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-level">
                     Fitness Level
                   </label>
                   <select
                     id="profile-level"
                     value={fitnessLevel}
                     onChange={(e) => setFitnessLevel(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
                   >
-                    <option value="beginner" className="bg-[#12121a]">Beginner (Just starting)</option>
-                    <option value="intermediate" className="bg-[#12121a]">Intermediate (Some experience)</option>
-                    <option value="advanced" className="bg-[#12121a]">Advanced (Consistent training)</option>
+                    <option value="beginner" className="bg-[#12121a] text-white">Beginner (Just starting)</option>
+                    <option value="intermediate" className="bg-[#12121a] text-white">Intermediate (Some experience)</option>
+                    <option value="advanced" className="bg-[#12121a] text-white">Advanced (Consistent training)</option>
                   </select>
                 </div>
 
-                {/* Preferred Equipment */}
+                {/* Preferred Equipment Setup */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-equipment">
+                  <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-equipment">
                     Preferred Equipment Setup
                   </label>
                   <select
                     id="profile-equipment"
                     value={equipment}
                     onChange={(e) => setEquipment(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
                   >
                     <option value="Full Gym" className="bg-[#12121a] text-white">Full Gym Equipment</option>
                     <option value="Dumbbells Only" className="bg-[#12121a] text-white">Dumbbells Only</option>
@@ -1548,14 +1915,14 @@ export default function ProfileTab({
 
                 {/* Weekly Frequency */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary" htmlFor="profile-frequency">
+                  <label className="text-xs font-semibold text-[#a0a0b8]" htmlFor="profile-frequency">
                     Weekly Training Days
                   </label>
                   <select
                     id="profile-frequency"
                     value={frequency}
                     onChange={(e) => setFrequency(parseInt(e.target.value))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors cursor-pointer text-sm"
                   >
                     <option value="2" className="bg-[#12121a] text-white">2 Days / week</option>
                     <option value="3" className="bg-[#12121a] text-white">3 Days / week</option>
@@ -1567,7 +1934,7 @@ export default function ProfileTab({
 
                 {/* Injuries & Constraints */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary">
+                  <label className="text-xs font-semibold text-[#a0a0b8]">
                     Injuries / Pain Barriers
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -1583,7 +1950,7 @@ export default function ProfileTab({
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                             active
                               ? 'bg-accent-rose/20 border-accent-rose text-accent-rose font-bold'
-                              : 'bg-white/2 border-white/5 text-text-secondary hover:border-white/10'
+                              : 'bg-[#161624] border-white/10 text-[#a0a0b8] hover:bg-white/5 hover:text-white'
                           }`}
                         >
                           {inj}
@@ -1596,13 +1963,13 @@ export default function ProfileTab({
                     placeholder="Other specific injuries..."
                     value={customInjury}
                     onChange={(e) => setCustomInjury(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[#12121a] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-xs placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#161624] border border-white/10 text-white focus:outline-none focus:border-accent-purple transition-colors text-xs placeholder-[#6a6a80]"
                   />
                 </div>
 
                 {/* Target Focus Muscles */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary">
+                  <label className="text-xs font-semibold text-[#a0a0b8]">
                     Prioritized Muscle Groups
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -1618,7 +1985,7 @@ export default function ProfileTab({
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                             active
                               ? 'bg-accent-emerald/20 border-accent-emerald text-accent-emerald font-bold'
-                              : 'bg-white/2 border-white/5 text-text-secondary hover:border-white/10'
+                              : 'bg-[#161624] border-white/10 text-[#a0a0b8] hover:bg-white/5'
                           }`}
                         >
                           {muscle}
@@ -1643,8 +2010,48 @@ export default function ProfileTab({
             {/* Explanation card */}
             <div className="lg:col-span-5 space-y-6">
               
+              {/* App Theme Selection Card */}
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col gap-4 hover:border-white/20 transition-colors animate-fade-in text-left">
+                <div className="flex gap-3 items-center">
+                  <div className="w-10 h-10 rounded-xl bg-accent-indigo/10 border border-accent-indigo/20 flex items-center justify-center text-accent-indigo text-xl shrink-0">
+                    🎨
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-heading font-bold text-white text-sm">Appearance</h4>
+                    <p className="text-[11px] text-[#a0a0b8] mt-0.5 leading-normal font-semibold">
+                      Customize how ForgeFit looks on your device.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 bg-[#161624] p-1 rounded-xl border border-white/10">
+                  {[
+                    { val: 'light', label: 'Light', icon: '☀️' },
+                    { val: 'dark', label: 'Dark', icon: '🌙' },
+                    { val: 'system', label: 'System', icon: '💻' }
+                  ].map(({ val, label, icon }) => {
+                    const active = themeSetting === val;
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => onChangeTheme(val)}
+                        className={`py-2.5 px-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          active
+                            ? 'bg-[#12121a] text-white shadow-sm border border-white/20'
+                            : 'text-[#a0a0b8] hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                      >
+                        <span>{icon}</span>
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Daily Motivation Setup */}
-              <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl flex flex-col gap-4 hover:border-white/10 transition-colors animate-fade-in">
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col gap-4 hover:border-white/20 transition-colors animate-fade-in">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex gap-3 items-center">
                     <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple text-xl shrink-0">
@@ -1652,7 +2059,7 @@ export default function ProfileTab({
                     </div>
                     <div className="text-left">
                       <h4 className="font-heading font-bold text-white text-sm">Motivational Reminders</h4>
-                      <p className="text-[11px] text-text-secondary mt-0.5 leading-normal">
+                      <p className="text-[11px] text-[#a0a0b8] mt-0.5 leading-normal">
                         Get multiple reminders throughout the day to stay active.
                       </p>
                     </div>
@@ -1665,13 +2072,13 @@ export default function ProfileTab({
                       onChange={onToggleMotivation}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-white/5 border border-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                    <div className="w-11 h-6 bg-gray-200 border border-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
                   </label>
                 </div>
 
                 {motivationEnabled && (
-                  <div className="border-t border-white/5 pt-4 space-y-3">
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left">
+                  <div className="border-t border-white/10 pt-4 space-y-3">
+                    <span className="text-[10px] text-[#6a6a80] font-bold uppercase tracking-wider block text-left">
                       Trigger Times
                     </span>
                     <div className="grid grid-cols-5 gap-2">
@@ -1691,7 +2098,7 @@ export default function ProfileTab({
                             className={`py-2 px-1 rounded-xl text-[10px] font-semibold border flex flex-col items-center gap-1 transition-all cursor-pointer ${
                               active
                                 ? 'bg-accent-purple/20 border-accent-purple text-white shadow-md'
-                                : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/10 hover:text-white'
+                                : 'bg-[#161624] border-white/10 text-[#a0a0b8] hover:bg-white/5 hover:text-white'
                             }`}
                           >
                             <span className="text-xs">{icon}</span>
@@ -1704,20 +2111,113 @@ export default function ProfileTab({
                 )}
               </div>
 
-              <div className="glass-card rounded-2xl p-6 border border-white/5 shadow-xl space-y-4">
-                <h3 className="font-heading font-black text-lg text-white flex items-center gap-2 pb-3 border-b border-white/5">
+              {/* Meal Logging Reminders */}
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col gap-4 hover:border-white/20 transition-colors animate-fade-in text-left">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex gap-3 items-center">
+                    <div className="w-10 h-10 rounded-xl bg-accent-emerald/10 border border-accent-emerald/20 flex items-center justify-center text-accent-emerald text-xl shrink-0">
+                      🥗
+                    </div>
+                    <div className="text-left">
+                      <h4 className="font-heading font-bold text-white text-sm">Meal Log Reminders</h4>
+                      <p className="text-[11px] text-[#a0a0b8] mt-0.5 leading-normal font-semibold">
+                        Get notified to log your meals and track calories on time.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={mealRemindersEnabled}
+                      onChange={onToggleMealReminders}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 border border-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Account Management Card */}
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-5 text-left animate-fade-in">
+                <h3 className="font-heading font-black text-lg text-white flex items-center gap-2 pb-3 border-b border-white/10">
+                  <Settings className="w-5 h-5 text-accent-purple" />
+                  Account Settings
+                </h3>
+                
+                <div className="space-y-3.5">
+                  <button
+                    onClick={handleLogoutClick}
+                    className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 text-[#a0a0b8] hover:text-white font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <span>🚪</span> Sign Out of Account
+                  </button>
+                </div>
+
+                {/* Danger Zone Section */}
+                <div className="border border-red-500/30 rounded-2xl p-4 bg-red-500/5 space-y-3">
+                  <span className="text-[10px] text-accent-rose font-black uppercase tracking-wider block font-heading">
+                    ⚠️ Danger Zone
+                  </span>
+                  <p className="text-[11px] text-[#a0a0b8] font-semibold leading-normal">
+                    Permanently delete your account and all associated workouts, routines, and tracking history. This action is irreversible.
+                  </p>
+                  
+                  {isDeletingAccount ? (
+                    <div className="space-y-3 pt-1 animate-fade-in">
+                      <label htmlFor="confirm-email-input" className="text-[10px] font-bold text-[#a0a0b8] block">
+                        To confirm deletion, please enter your email address (<strong className="text-white select-all">{user?.email}</strong>):
+                      </label>
+                      <input
+                        id="confirm-email-input"
+                        type="email"
+                        placeholder="your-email@example.com"
+                        value={confirmEmail}
+                        onChange={(e) => setConfirmEmail(e.target.value)}
+                        className="w-full px-3 py-2.5 text-xs font-semibold bg-[#161624] border border-red-500/30 rounded-xl focus:border-red-500 focus:outline-none text-white"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setIsDeletingAccount(false); setConfirmEmail(''); }}
+                          className="flex-1 py-2 px-3 rounded-lg border border-white/10 hover:bg-white/5 text-[#a0a0b8] font-bold text-[10px] transition-all cursor-pointer shadow-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleConfirmDeleteClick}
+                          disabled={confirmEmail !== user?.email}
+                          className="flex-1 py-2 px-3 rounded-lg bg-accent-rose hover:opacity-90 disabled:opacity-50 text-[#ededed] font-extrabold text-[10px] transition-all cursor-pointer shadow"
+                        >
+                          Delete Account
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsDeletingAccount(true)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-accent-rose/10 hover:bg-accent-rose/20 text-accent-rose border border-accent-rose/20 hover:border-accent-rose/30 font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer animate-fade-in"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete Account Permanently
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats info card */}
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm space-y-4">
+                <h3 className="font-heading font-black text-lg text-white flex items-center gap-2 pb-3 border-b border-white/10">
                   <HelpCircle className="w-5 h-5 text-accent-cyan" />
                   Why update stats?
                 </h3>
                 
-                <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
+                <div className="space-y-3 text-xs text-[#a0a0b8] leading-relaxed">
                   <p>
                     Your biological measurements dynamically tune the entire ForgeFit experience. 
                   </p>
                   <ul className="list-disc pl-4 space-y-2">
-                    <li><strong>AI Recommendations:</strong> Program splits, target weight estimates, and recovery durations automatically scale.</li>
-                    <li><strong>Workout Rest Targets:</strong> Users above 50 receive automatically increased recovery margins (an additional 15 seconds) to buffer joints and support muscle rebuilding.</li>
-                    <li><strong>Customized Target Volume:</strong> Generated templates use set presets built directly for {fitnessLevel} builders.</li>
+                    <li><strong className="text-white">AI Recommendations:</strong> Program splits, target weight estimates, and recovery durations automatically scale.</li>
+                    <li><strong className="text-white">Workout Rest Targets:</strong> Users above 50 receive automatically increased recovery margins (an additional 15 seconds) to buffer joints and support muscle rebuilding.</li>
+                    <li><strong className="text-white">Customized Target Volume:</strong> Generated templates use set presets built directly for {fitnessLevel} builders.</li>
                   </ul>
                 </div>
               </div>

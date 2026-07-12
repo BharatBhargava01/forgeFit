@@ -57,8 +57,8 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
     }
     const active = selectedMuscles.includes(mappedKey);
     return {
-      fill: active ? 'rgba(124, 58, 237, 0.7)' : 'rgba(255, 255, 255, 0.04)',
-      stroke: active ? 'rgba(168, 85, 247, 1)' : 'rgba(255, 255, 255, 0.12)',
+      fill: active ? 'rgba(124, 58, 237, 0.7)' : 'var(--heatmap-empty-fill, rgba(255, 255, 255, 0.04))',
+      stroke: active ? 'rgba(168, 85, 247, 1)' : 'var(--heatmap-empty-stroke, rgba(255, 255, 255, 0.12))',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
     };
@@ -485,11 +485,11 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                     <span className="text-[9px] text-text-muted font-black uppercase tracking-wider mb-2">Front</span>
                     <svg viewBox="50 20 100 210" className="w-[100px] h-[200px]">
                       {/* Body outline silhouette */}
-                      <circle cx="100" cy="30" r="10" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="97,40 103,40 102,52 98,52" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="94,108 105,108 105,122 95,122" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="78,220 86,220 86,228 74,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="122,220 114,220 114,228 126,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <circle cx="100" cy="30" r="10" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="97,40 103,40 102,52 98,52" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="94,108 105,108 105,122 95,122" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="78,220 86,220 86,228 74,228" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="122,220 114,220 114,228 126,228" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
                       
                       {muscleGroupsFront.map(mg => (
                         <g
@@ -511,11 +511,11 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                     <span className="text-[9px] text-text-muted font-black uppercase tracking-wider mb-2">Back</span>
                     <svg viewBox="250 20 100 210" className="w-[100px] h-[200px]">
                       {/* Body outline silhouette */}
-                      <circle cx="300" cy="30" r="10" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="297,40 303,40 302,52 298,52" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="294,108 306,108 305,126 295,126" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="278,220 286,220 286,228 274,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                      <polygon points="322,220 314,220 314,228 326,228" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                      <circle cx="300" cy="30" r="10" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="297,40 303,40 302,52 298,52" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="294,108 306,108 305,126 295,126" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="278,220 286,220 286,228 274,228" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
+                      <polygon points="322,220 314,220 314,228 326,228" fill="var(--heatmap-outline-fill, rgba(255,255,255,0.03))" stroke="var(--heatmap-outline-stroke, rgba(255,255,255,0.06))" strokeWidth="1" />
                       
                       {muscleGroupsBack.map(mg => (
                         <g
@@ -843,14 +843,14 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-white text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-[#ededed] text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Save className="w-4 h-4" />
                     Save
                   </button>
                   <button
                     onClick={handleGenerate}
-                    className="p-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-white hover:text-white cursor-pointer"
+                    className="p-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-[#ededed] hover:text-[#ededed] cursor-pointer"
                     title="Regenerate"
                   >
                     <RotateCcw className="w-4 h-4" />

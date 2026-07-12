@@ -746,7 +746,7 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                 </button>
                 <button
                   onClick={handleBuild}
-                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-white text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 text-[#ededed] text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Regenerate

@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-dark: #0a0a0f;
-  --color-bg-card: #12121a;
-  --color-bg-card-light: #1a1a2e;
+  --color-bg-dark: #eef0f2;
+  --color-bg-card: #ffffff;
+  --color-bg-card-light: #f7f9fa;
 
-  --color-text-primary: #f0f0f5;
-  --color-text-secondary: #a0a0b8;
-  --color-text-muted: #6a6a80;
+  --color-text-primary: #1e1f22;
+  --color-text-secondary: #60626a;
+  --color-text-muted: #8c8e98;
 
   --color-accent-purple: #7c3aed;
   --color-accent-indigo: #4f46e5;
@@ -16,15 +16,23 @@
   --color-accent-emerald: #10b981;
   --color-accent-amber: #f59e0b;
 
-  --font-sans: var(--font-inter);
-  --font-heading: var(--font-outfit);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', system-ui, sans-serif;
+}
+
+:root {
+  --heatmap-empty-fill: rgba(255, 255, 255, 0.03);
+  --heatmap-empty-stroke: rgba(255, 255, 255, 0.08);
+  --heatmap-outline-fill: rgba(255, 255, 255, 0.06);
+  --heatmap-outline-stroke: rgba(255, 255, 255, 0.12);
+  --heatmap-text: #a0a0b8;
 }
 
 /* Custom base layer */
 @layer base {
   body {
-    background-color: #0a0a0f;
-    color: #f0f0f5;
+    background-color: #15161b;
+    color: #1e1f22;
   }
 }
 
@@ -91,7 +99,7 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0f;
+  background: #15161b;
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
@@ -100,3 +108,442 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ==========================================
+   Light Theme Context & Overrides (UI Overhaul)
+   ========================================== */
+.theme-light {
+  --color-bg-dark: #eef0f2;
+  --color-bg-card: #ffffff;
+  --color-bg-card-light: #f7f9fa;
+  --color-text-primary: #1e1f22;
+  --color-text-secondary: #60626a;
+  --color-text-muted: #8c8e98;
+  
+  --heatmap-empty-fill: rgba(0, 0, 0, 0.04);
+  --heatmap-empty-stroke: rgba(0, 0, 0, 0.08);
+  --heatmap-outline-fill: rgba(0, 0, 0, 0.02);
+  --heatmap-outline-stroke: rgba(0, 0, 0, 0.08);
+  --heatmap-text: #60626a;
+  
+  color: #1e1f22;
+  background-color: #eef0f2;
+}
+
+/* Catch-all text color overrides for light mode */
+.theme-light, 
+.theme-light h1, 
+.theme-light h2, 
+.theme-light h3, 
+.theme-light h4, 
+.theme-light h5, 
+.theme-light h6, 
+.theme-light p, 
+.theme-light span, 
+.theme-light li, 
+.theme-light td, 
+.theme-light th, 
+.theme-light label,
+.theme-light select,
+.theme-light input,
+.theme-light textarea {
+  color: #1e1f22; /* Default to dark charcoal */
+}
+
+/* Force light backgrounds */
+.theme-light .bg-bg-dark,
+.theme-light .bg-\[\#0a0a0f\],
+.theme-light .bg-\[\#0a0a0f\]\/95,
+.theme-light .bg-\[\#0c0c12\],
+.theme-light .bg-\[\#0c0c12\]\/95,
+.theme-light .bg-\[\#0d0d14\]\/95,
+.theme-light .bg-\[\#0d0d15\],
+.theme-light .bg-\[\#12121a\],
+.theme-light .bg-\[\#12121a\]\/95,
+.theme-light .bg-bg-card {
+  background-color: #ffffff !important;
+}
+
+.theme-light .bg-bg-card-light,
+.theme-light .bg-\[\#1a1a2e\],
+.theme-light .bg-\[\#161624\],
+.theme-light .bg-\[\#161624\]\/30,
+.theme-light .bg-\[\#161624\]\/60,
+.theme-light .bg-\[\#181824\] {
+  background-color: #f7f9fa !important;
+}
+
+/* Text opacity override classes in light mode */
+.theme-light .text-white,
+.theme-light .text-\[\#f0f0f5\],
+.theme-light .text-\[\#ededed\] {
+  color: #1e1f22 !important;
+}
+
+.theme-light .text-white\/90,
+.theme-light .text-white\/80,
+.theme-light .text-white\/75 {
+  color: rgba(30, 31, 34, 0.85) !important;
+}
+
+.theme-light .text-white\/70,
+.theme-light .text-white\/60,
+.theme-light .text-white\/50 {
+  color: rgba(30, 31, 34, 0.65) !important;
+}
+
+.theme-light .text-white\/40,
+.theme-light .text-white\/30,
+.theme-light .text-white\/20 {
+  color: rgba(30, 31, 34, 0.4) !important;
+}
+
+.theme-light .text-text-secondary,
+.theme-light .text-\[\#a0a0b8\] {
+  color: #60626a !important;
+}
+
+.theme-light .text-text-muted,
+.theme-light .text-\[\#6a6a80\] {
+  color: #8c8e98 !important;
+}
+
+/* Input boxes in light mode */
+.theme-light input,
+.theme-light select,
+.theme-light textarea {
+  background-color: #ffffff !important;
+  color: #1e1f22 !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-light input::placeholder,
+.theme-light textarea::placeholder {
+  color: #8c8e98 !important;
+  opacity: 1 !important;
+}
+
+.theme-light .glass-card {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1e1f22 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.theme-light .glass-card-hover:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(-2px);
+}
+
+.theme-light .border-white\/5,
+.theme-light .border-white\/10,
+.theme-light .border-white\/15,
+.theme-light .border-white\/20,
+.theme-light .border-white\/30 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+.theme-light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Sleep Analysis Dark Card Overrides */
+.theme-light .bg-dark-card {
+  background-color: #15161b !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.theme-light .bg-dark-card,
+.theme-light .bg-dark-card *,
+.theme-light .bg-dark-card h3,
+.theme-light .bg-dark-card span,
+.theme-light .bg-dark-card p,
+.theme-light .bg-dark-card div {
+  color: #ffffff !important;
+}
+
+.theme-light .bg-dark-card .text-text-secondary {
+  color: #a0a0b8 !important;
+}
+
+.theme-light .bg-dark-card .text-text-muted {
+  color: #6a6a80 !important;
+}
+
+/* Keep white text inside colored badges, gradients, and dark active areas */
+.theme-light button.text-white,
+.theme-light button .text-white,
+.theme-light .bg-gradient-to-r,
+.theme-light .bg-gradient-to-r *,
+.theme-light .bg-accent-indigo,
+.theme-light .bg-accent-indigo *,
+.theme-light .bg-accent-purple,
+.theme-light .bg-accent-purple *,
+.theme-light .bg-accent-rose,
+.theme-light .bg-accent-rose *,
+.theme-light .bg-accent-emerald,
+.theme-light .bg-accent-emerald *,
+.theme-light .badge,
+.theme-light .badge * {
+  color: #ffffff !important;
+}
+
+/* Scrollbars for light mode panel */
+.theme-light ::-webkit-scrollbar-track {
+  background: #eef0f2 !important;
+}
+.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ==========================================
+   Global Modal Light Mode Overrides
+   ========================================== */
+.theme-light .fixed.inset-0 .bg-\[\#0a0a0f\],
+.theme-light .fixed.inset-0 .bg-\[\#0a0a0f\]\/95,
+.theme-light .fixed.inset-0 .bg-\[\#0a0a0f\]\/90,
+.theme-light .fixed.inset-0 .bg-\[\#12121a\],
+.theme-light .fixed.inset-0 .bg-\[\#15161b\],
+.theme-light .fixed.inset-0 .bg-bg-dark,
+.theme-light .fixed.inset-0 .bg-bg-card,
+.theme-light .fixed.inset-0 .bg-bg-card-light {
+  background-color: #ffffff !important;
+  color: #1e1f22 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1) !important;
+}
+
+.theme-light .fixed.inset-0,
+.theme-light .fixed.inset-0 *,
+.theme-light .fixed.inset-0 h1,
+.theme-light .fixed.inset-0 h2,
+.theme-light .fixed.inset-0 h3,
+.theme-light .fixed.inset-0 h4,
+.theme-light .fixed.inset-0 h5,
+.theme-light .fixed.inset-0 h6,
+.theme-light .fixed.inset-0 p,
+.theme-light .fixed.inset-0 span,
+.theme-light .fixed.inset-0 label,
+.theme-light .fixed.inset-0 li,
+.theme-light .fixed.inset-0 td,
+.theme-light .fixed.inset-0 th,
+.theme-light .fixed.inset-0 div:not(.bg-accent-indigo):not(.bg-accent-indigo *):not(.bg-accent-purple):not(.bg-accent-purple *):not(.bg-gradient-to-r):not(.bg-gradient-to-r *) {
+  color: #1e1f22 !important;
+}
+
+.theme-light .fixed.inset-0 input,
+.theme-light .fixed.inset-0 select,
+.theme-light .fixed.inset-0 textarea {
+  background-color: #ffffff !important;
+  color: #1e1f22 !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-light .fixed.inset-0 input::placeholder,
+.theme-light .fixed.inset-0 textarea::placeholder {
+  color: #8c8e98 !important;
+  opacity: 1 !important;
+}
+
+.theme-light .fixed.inset-0 .glass-card,
+.theme-light .fixed.inset-0 .bg-white\/5,
+.theme-light .fixed.inset-0 .bg-white\/10 {
+  background-color: #f7f9fa !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1e1f22 !important;
+}
+
+/* Modal overlays exception: keep backdrop dark */
+.theme-light .fixed.inset-0 .bg-black\/60,
+.theme-light .fixed.inset-0 .bg-black\/75,
+.theme-light .fixed.inset-0 .bg-black\/80 {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+}
+
+/* Modal close button */
+.theme-light .fixed.inset-0 button.absolute,
+.theme-light .fixed.inset-0 button.absolute * {
+  color: #60626a !important;
+}
+
+/* Modal action buttons white text */
+.theme-light .fixed.inset-0 button.text-white,
+.theme-light .fixed.inset-0 button.text-white *,
+.theme-light .fixed.inset-0 button .text-white,
+.theme-light .fixed.inset-0 .bg-accent-indigo *,
+.theme-light .fixed.inset-0 .bg-accent-purple *,
+.theme-light .fixed.inset-0 .bg-gradient-to-r *,
+.theme-light .fixed.inset-0 .badge * {
+  color: #ffffff !important;
+}
+
+.theme-light .fixed.inset-0 ::-webkit-scrollbar-track {
+  background: #ffffff !important;
+}
+.theme-light .fixed.inset-0 ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Overlapping Circles for Energy Used Widget */
+.circle-overlap-container {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.circle-purple {
+  background: #a389f4;
+  width: 135px;
+  height: 135px;
+  border-radius: 50%;
+  position: absolute;
+  top: 15px;
+  left: calc(50% - 100px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #1e1f22 !important;
+  font-weight: 800;
+  box-shadow: 0 10px 25px rgba(163, 137, 244, 0.25);
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circle-dark {
+  background: #15161b;
+  width: 115px;
+  height: 115px;
+  border-radius: 50%;
+  position: absolute;
+  top: 25px;
+  right: calc(50% - 90px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 10px 25px rgba(21, 22, 27, 0.15);
+  z-index: 5;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circle-green {
+  background: #d6fa46;
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 15px;
+  left: calc(50% - 30px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #1e1f22 !important;
+  font-weight: 800;
+  box-shadow: 0 10px 25px rgba(214, 250, 70, 0.25);
+  z-index: 15;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circle-purple:hover,
+.circle-dark:hover,
+.circle-green:hover {
+  transform: scale(1.05);
+}
+
+.circle-purple *,
+.circle-green * {
+  color: #1e1f22 !important;
+}
+
+.circle-dark * {
+  color: #ffffff !important;
+}
+
+/* Sleep bar chart stripes */
+.sleep-bar-striped {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.08) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Donut Chart SVG Theme Overrides */
+.theme-light .donut-center-circle {
+  fill: #ffffff !important;
+}
+.theme-dark .donut-center-circle {
+  fill: #12121a !important;
+}
+
+.theme-light .donut-empty-circle {
+  fill: #f3f4f6 !important;
+}
+.theme-dark .donut-empty-circle {
+  fill: #161624 !important;
+}
+
+.theme-light .donut-slice-path {
+  stroke: #ffffff !important;
+}
+.theme-dark .donut-slice-path {
+  stroke: #12121a !important;
+}
+
+/* Dark Sidebar Theme Preservation */
+.dark-sidebar {
+  background-color: #15161b !important;
+  color: #808191 !important;
+  border-right-color: rgba(255, 255, 255, 0.03) !important;
+}
+.theme-light .dark-sidebar *,
+.theme-light .dark-sidebar span,
+.theme-light .dark-sidebar button,
+.theme-light .dark-sidebar svg {
+  color: #808191 !important;
+}
+.theme-light .dark-sidebar button:hover,
+.theme-light .dark-sidebar button:hover * {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+.theme-light .dark-sidebar button.bg-white,
+.theme-light .dark-sidebar button.bg-white * {
+  background-color: #ffffff !important;
+  color: #1e1f22 !important;
+}
+.theme-light .dark-sidebar .text-white {
+  color: #ffffff !important;
+}
+
+/* Explicit theme-dark fallback variable values */
+.theme-dark {
+  --color-bg-dark: #0a0a0f;
+  --color-bg-card: #12121a;
+  --color-bg-card-light: #161624;
+  --color-text-primary: #ededed;
+  --color-text-secondary: #a0a0b8;
+  --color-text-muted: #6a6a80;
+}
+
+

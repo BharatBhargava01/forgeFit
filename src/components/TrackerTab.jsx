@@ -379,7 +379,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     <div className="max-w-4xl mx-auto px-4 py-8 animate-slide-up relative">
       
       {/* Timer & Dashboard Banner */}
-      <div className="glass-card rounded-2xl p-6 mb-6 shadow-xl flex items-center justify-between border border-white/10 bg-gradient-to-r from-[#12121a] to-[#1a1a2e]">
+      <div className="glass-card rounded-2xl p-6 mb-6 shadow-xl flex items-center justify-between border border-white/10 bg-[#12121a]">
         <div>
           <span className="text-xs text-text-muted font-bold tracking-wider uppercase">Active Session</span>
           <h3 className="font-heading font-extrabold text-2xl text-white mt-1">
@@ -389,7 +389,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
             {loggedExercises.length} Exercises · Prefill Target: {workout?.estimatedMinutes || '?'} mins
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-black/30 border border-white/5 px-4 py-2.5 rounded-xl">
+        <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
           <button
             onClick={() => setIsPaused(!isPaused)}
             className="p-1 rounded-lg hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer mr-1"
@@ -480,7 +480,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
                 <button
                   type="button"
                   onClick={() => handleAddSet(ex.id)}
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-bold flex items-center gap-1 border border-white/10 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#ededed] text-xs font-bold flex items-center gap-1 border border-white/10 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Set
@@ -598,7 +598,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       <div className="mt-8 flex flex-col sm:flex-row gap-4">
         <button
           onClick={handleCancel}
-          className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-accent-rose/10 hover:border-accent-rose/30 hover:text-accent-rose text-white font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-accent-rose/10 hover:border-accent-rose/30 hover:text-accent-rose text-[#ededed] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <X className="w-5 h-5" />
           Cancel Workout
