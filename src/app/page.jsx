@@ -720,7 +720,7 @@ export default function MainPage() {
                 <button
                   key={link.id}
                   onClick={() => setCurrentPage(link.id)}
-                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-2xl text-xs font-black tracking-wide transition-all group cursor-pointer ${
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-2xl text-sm font-black tracking-wide transition-all group cursor-pointer ${
                     isActive
                       ? 'bg-white text-[#1e1f22] shadow-md font-extrabold'
                       : 'text-[#808191] hover:text-white hover:bg-white/5'
@@ -742,11 +742,39 @@ export default function MainPage() {
           </nav>
         </div>
 
-        {/* Collapse Toggle Button */}
-        <div className="pt-4 border-t border-white/[0.03]">
+        {/* Collapse, Sync and Sign Out Buttons bottom area */}
+        <div className="pt-4 border-t border-white/[0.03] space-y-1.5">
+          {user && (
+            <>
+              {/* Sync Local Data Button */}
+              <button
+                onClick={handleSyncData}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-3 rounded-2xl text-sm font-black tracking-wide text-accent-cyan hover:bg-accent-cyan/10 transition-all cursor-pointer`}
+                title={sidebarCollapsed ? "Sync Local Data" : undefined}
+              >
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-4.5 h-4.5 text-accent-cyan" />
+                  {!sidebarCollapsed && <span>Sync Local Data</span>}
+                </div>
+              </button>
+
+              {/* Sign Out Button */}
+              <button
+                onClick={handleSignOut}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-3 rounded-2xl text-sm font-black tracking-wide text-[#ff5c5c] hover:bg-[#ff5c5c]/10 transition-all cursor-pointer`}
+                title={sidebarCollapsed ? "Sign Out" : undefined}
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4.5 h-4.5 text-[#ff5c5c]" />
+                  {!sidebarCollapsed && <span>Sign Out</span>}
+                </div>
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-3 rounded-2xl text-xs font-black tracking-wide text-[#808191] hover:text-white hover:bg-white/5 transition-all cursor-pointer`}
+            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-3 rounded-2xl text-sm font-black tracking-wide text-[#808191] hover:text-white hover:bg-white/5 transition-all cursor-pointer`}
             title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             <div className="flex items-center gap-3">
@@ -769,15 +797,15 @@ export default function MainPage() {
         <div className="fixed inset-0 z-50 flex lg:hidden animate-fade-in">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
           
-          <aside className="relative flex flex-col w-72 bg-[#15161b] text-[#808191] p-6 h-full z-10 select-none">
-            <button 
-              onClick={() => setMobileSidebarOpen(false)}
-              className="absolute right-4 top-4 p-1 rounded-xl hover:bg-white/5 text-[#808191] hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
+          <aside className="relative flex flex-col w-72 bg-[#15161b] text-[#808191] p-6 h-full z-10 select-none justify-between">
             <div className="space-y-6">
+              <button 
+                onClick={() => setMobileSidebarOpen(false)}
+                className="absolute right-4 top-4 p-1 rounded-xl hover:bg-white/5 text-[#808191] hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
               <div className="flex items-center gap-3 px-2 cursor-pointer" onClick={() => { setCurrentPage(user ? 'dashboard' : 'home'); setMobileSidebarOpen(false); }}>
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-lg shrink-0">
                   <Flame className="w-5.5 h-5.5 fill-white text-white" />
@@ -798,7 +826,7 @@ export default function MainPage() {
                         setCurrentPage(link.id);
                         setMobileSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black tracking-wide transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-black tracking-wide transition-all cursor-pointer ${
                         isActive
                           ? 'bg-white text-[#1e1f22] shadow-md font-bold'
                           : 'text-[#808191] hover:text-white hover:bg-white/5'
@@ -818,6 +846,39 @@ export default function MainPage() {
                 })}
               </nav>
             </div>
+
+            {/* Bottom section of Mobile Sidebar */}
+            {user && (
+              <div className="pt-4 border-t border-white/[0.03] space-y-1.5">
+                {/* Sync Local Data Button */}
+                <button
+                  onClick={() => {
+                    handleSyncData();
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black tracking-wide text-accent-cyan hover:bg-accent-cyan/10 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="w-4.5 h-4.5 text-accent-cyan" />
+                    <span>Sync Local Data</span>
+                  </div>
+                </button>
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={() => {
+                    handleSignOut();
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black tracking-wide text-[#ff5c5c] hover:bg-[#ff5c5c]/10 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <LogOut className="w-4.5 h-4.5 text-[#ff5c5c]" />
+                    <span>Sign Out</span>
+                  </div>
+                </button>
+              </div>
+            )}
           </aside>
         </div>
       )}
@@ -831,11 +892,17 @@ export default function MainPage() {
           {/* Top Header Panel */}
           <header className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2.5 flex items-center justify-between gap-2 sm:gap-4 border-b border-black/[0.02]">
             
-            {/* User Profile Widget on the Left */}
-            <div className="relative">
+            {/* User Profile Widget */}
+            <div className="relative order-3 lg:order-1">
               <div 
                 className="flex items-center gap-1.5 sm:gap-3 p-1 sm:p-1.5 pr-1 sm:pr-4.5 rounded-full bg-white border border-gray-200/50 hover:border-gray-300 shadow-sm cursor-pointer select-none transition-all"
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                onClick={() => {
+                  if (user) {
+                    setCurrentPage('profile');
+                  } else {
+                    setAuthModalOpen(true);
+                  }
+                }}
               >
                 {user ? (
                   user.avatar_url ? (
@@ -858,70 +925,25 @@ export default function MainPage() {
                 <div className="text-left shrink-0 hidden sm:block">
                   <h4 className="font-heading font-black text-xs text-[#1e1f22] leading-tight flex items-center gap-1">
                     {user ? user.name : 'Guest User'}
-                    <ChevronDown className="w-3 h-3 text-text-secondary" />
                   </h4>
                   <span className="text-[10px] text-text-secondary font-bold block leading-none mt-0.5">
                     {user ? user.email : 'Click to sign in'}
                   </span>
                 </div>
               </div>
-
-              {/* User Dropdown Dialog Popover */}
-              {userDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setUserDropdownOpen(false)} />
-                  <div className="absolute left-0 mt-2.5 w-60 rounded-2xl bg-white border border-gray-150 p-2 shadow-2xl z-50 text-[#1e1f22] animate-slide-up">
-                    {user ? (
-                      <>
-                        <div className="px-3 py-2 border-b border-gray-100 mb-1 text-left">
-                          <p className="text-xs font-black text-[#1e1f22] truncate">{user.name}</p>
-                          <p className="text-[10px] text-text-secondary truncate mt-0.5">{user.email}</p>
-                        </div>
-                        <button
-                          onClick={() => { setCurrentPage('profile'); setUserDropdownOpen(false); }}
-                          className="w-full px-3 py-2.5 rounded-xl text-xs font-bold text-[#1e1f22] hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-left"
-                        >
-                          👤 View Fitness Goals
-                        </button>
-                        <button
-                          onClick={() => { handleSyncData(); setUserDropdownOpen(false); }}
-                          className="w-full px-3 py-2.5 rounded-xl text-xs font-bold text-[#1e1f22] hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-left"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-cyan-500" />
-                          Sync Local Data
-                        </button>
-                        <button
-                          onClick={() => { handleSignOut(); setUserDropdownOpen(false); }}
-                          className="w-full px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 flex items-center gap-2 cursor-pointer text-left mt-1"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          Sign Out
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => { setAuthModalOpen(true); setUserDropdownOpen(false); }}
-                        className="w-full px-3 py-3 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple text-white font-extrabold text-xs shadow-md text-center cursor-pointer block"
-                      >
-                        Sign In / Register
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
 
             {/* Mobile Hamburger menu toggle */}
             <button
               onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-[#1e1f22] cursor-pointer shrink-0"
+              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-[#1e1f22] cursor-pointer shrink-0 order-1 lg:order-2"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Right Header: Notification & Date (only shown on dashboard) */}
             {currentPage === 'dashboard' && (
-              <div className="flex items-center gap-1.5 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-4 order-2 lg:order-3">
 
                 {/* Date Selection with calendar dropdown */}
                 <div className="relative shrink-0">
