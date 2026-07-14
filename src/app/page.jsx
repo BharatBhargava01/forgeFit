@@ -964,7 +964,7 @@ export default function MainPage() {
                   {calendarOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setCalendarOpen(false)} />
-                      <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-gray-150 p-4 shadow-2xl z-50 animate-slide-up text-[#1e1f22]">
+                      <div className="absolute left-1/2 -translate-x-1/2 lg:left-auto lg:translate-x-0 lg:right-0 mt-2 w-64 rounded-2xl bg-white border border-gray-150 p-4 shadow-2xl z-50 animate-slide-up text-[#1e1f22]">
                         {/* Calendar Header */}
                         <div className="flex items-center justify-between mb-3">
                           <button

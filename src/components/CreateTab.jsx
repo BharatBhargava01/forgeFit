@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Trash2, Dumbbell, Save, Search, Check, X, ShieldAlert } from 'lucide-react';
 import { MUSCLE_GROUPS, EQUIPMENT, getAllExercises, filterExercises } from '@/lib/data';
 import { saveCustomExercise, getCustomExercises, deleteCustomExercise, saveRoutine, saveWorkout } from '@/lib/storage';
 
 export default function CreateTab({ showToast, refreshCache }) {
   const [activeSubTab, setActiveSubTab] = useState('exercise'); // 'exercise', 'workout', or 'routine'
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   
   // Custom Exercise State
   const [exerciseName, setExerciseName] = useState('');
@@ -862,16 +869,17 @@ export default function CreateTab({ showToast, refreshCache }) {
       )}
     </div>
 
-      {/* EXERCISE PICKER MODAL OVERLAY */}
-      {pickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-2xl bg-bg-card border border-white/10 bg-gradient-to-b from-[#12121a] to-[#0a0a0f] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+
+      {/* EXERCISE PICKER PORTAL MODAL OVERLAY */}
+      {mounted && pickerOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-2xl bg-[#161624] border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)] rounded-2xl flex flex-col max-h-[85vh] overflow-hidden text-[#ededed]">
             
             {/* Modal Header */}
-            <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-white/5 flex justify-between items-center shrink-0">
               <div>
                 <h4 className="font-heading font-bold text-lg text-white">Pick Exercises</h4>
-                <p className="text-xs text-text-muted mt-0.5">Select the exercises you'd like to assign to this training day.</p>
+                <p className="text-xs text-text-muted mt-0.5">Select the exercises you'd like to assign.</p>
               </div>
               <button
                 onClick={() => setPickerOpen(false)}
@@ -897,7 +905,7 @@ export default function CreateTab({ showToast, refreshCache }) {
               </div>
 
               {/* Muscle Filter chips */}
-              <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1">
+              <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 scrollbar-none">
                 {['All', ...MUSCLE_GROUPS].map(muscle => {
                   const active = pickerFilter === muscle;
                   return (
@@ -918,7 +926,7 @@ export default function CreateTab({ showToast, refreshCache }) {
             </div>
 
             {/* Modal Exercises List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[40vh]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-[200px] custom-scrollbar">
               {filteredPickerExercises.length > 0 ? (
                 filteredPickerExercises.map(ex => {
                   const selected = pickerSelectedIds.includes(ex.id);
@@ -977,7 +985,8 @@ export default function CreateTab({ showToast, refreshCache }) {
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

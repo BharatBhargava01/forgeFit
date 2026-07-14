@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X, Plus, Search, GripVertical, Dumbbell } from 'lucide-react';
 import { getAllExercises, MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
 import { generateWorkout } from '@/lib/generator';
@@ -6,6 +7,12 @@ import { saveWorkout } from '@/lib/storage';
 
 export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorkout, clearPrefill, prefilledMuscles, clearPrefilledMuscles, user, onSignInClick }) {
   const [selectedMuscles, setSelectedMuscles] = useState([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [duration, setDuration] = useState(30);
   const [difficulty, setDifficulty] = useState(2);
   const [selectedEquipment, setSelectedEquipment] = useState([]);
@@ -979,7 +986,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                       setAddModalOpen(true);
                       setAddSelectedIds([]);
                     }}
-                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/20 text-white text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
+                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/15 hover:bg-white/10 hover:border-white/20 text-[#ededed] text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <Plus className="w-4 h-4" />
                     Add Exercise
@@ -1005,8 +1012,8 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
       </div>
 
       {/* SWAP ALTERNATIVES MODAL */}
-      {workoutResult && swapIndex !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      {mounted && workoutResult && swapIndex !== null && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-lg glass-card border border-white/10 bg-[#12121a] rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up flex flex-col max-h-[85vh]">
             
             {/* Modal Header */}
@@ -1069,12 +1076,13 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ADD EXERCISE MODAL */}
-      {addModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      {mounted && addModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-2xl bg-bg-card border border-white/10 bg-gradient-to-b from-[#12121a] to-[#0a0a0f] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-slide-up">
             
             {/* Modal Header */}
@@ -1192,7 +1200,8 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

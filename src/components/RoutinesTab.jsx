@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, Save, RotateCcw, ChevronDown, ChevronUp, Dumbbell, Trash2, X, GripVertical, Plus, Search, Check, Play } from 'lucide-react';
 import { getSplitOptions, generateRoutine } from '@/lib/routine';
 import { saveRoutine } from '@/lib/storage';
@@ -17,6 +18,12 @@ const mapSplitToKey = (splitName) => {
 
 export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill, user, onSignInClick, onStartWorkout, onSendToGenerator }) {
   const [goal, setGoal] = useState('hypertrophy');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [splitType, setSplitType] = useState('push-pull-legs');
   const [daysPerWeek, setDaysPerWeek] = useState(4);
   const [splitList, setSplitList] = useState([]);
@@ -987,8 +994,8 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
       </div>
 
       {/* ROUTINE SWAP ALTERNATIVES MODAL */}
-      {swapDayIndex !== null && swapExIdx !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      {mounted && swapDayIndex !== null && swapExIdx !== null && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-lg glass-card border border-white/10 bg-[#12121a] rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up flex flex-col max-h-[85vh]">
             
             {/* Modal Header */}
@@ -1051,11 +1058,12 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* ADD EXERCISE TO ROUTINE DAY MODAL */}
-      {addExerciseDayIndex !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      {mounted && addExerciseDayIndex !== null && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-2xl bg-bg-card border border-white/10 bg-gradient-to-b from-[#12121a] to-[#0a0a0f] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-slide-up">
             
             {/* Modal Header */}
@@ -1175,7 +1183,8 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </>

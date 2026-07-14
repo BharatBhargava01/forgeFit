@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Search } from 'lucide-react';
+import { X, Plus, Trash2, Search, GripVertical } from 'lucide-react';
 import { saveWorkoutLog, updateWorkoutLog, getCustomExercises, saveCustomExercise } from '@/lib/storage';
 import { EXERCISES } from '@/lib/data';
 
@@ -12,7 +12,9 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
   // Default date format YYYY-MM-DD
   const todayStr = new Date().toLocaleDateString('en-CA');
   const [date, setDate] = useState(todayStr);
+  const [time, setTime] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(45);
+  const [draggedIndex, setDraggedIndex] = useState(null);
   
   const [exercises, setExercises] = useState([
     {
@@ -38,6 +40,14 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const getLocalTimeStr = (dateObjOrStr) => {
+    const d = new Date(dateObjOrStr);
+    if (isNaN(d.getTime())) return '';
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const musclesList = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'];
@@ -67,6 +77,8 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
         setWorkoutName(logToEdit.name || 'Workout Session');
         const localDate = getLocalDateString(logToEdit.loggedAt || logToEdit.date);
         setDate(localDate);
+        const localTime = getLocalTimeStr(logToEdit.loggedAt || logToEdit.date);
+        setTime(localTime || '12:00');
         setDurationMinutes(Math.round((logToEdit.durationSeconds || 0) / 60) || 45);
         
         if (logToEdit.exercises) {
@@ -86,6 +98,10 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
       } else {
         setWorkoutName('Manual Workout Session');
         setDate(new Date().toLocaleDateString('en-CA'));
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        setTime(`${currentHours}:${currentMinutes}`);
         setDurationMinutes(45);
         setExercises([
           {
@@ -193,6 +209,28 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
     if (confirm('Are you sure you want to remove this exercise from this session?')) {
       setExercises(exercises.filter(ex => ex.id !== exId));
     }
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const updated = [...exercises];
+    const item = updated[draggedIndex];
+    updated.splice(draggedIndex, 1);
+    updated.splice(index, 0, item);
+    setExercises(updated);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const handleExerciseChange = (exId, field, value) => {
@@ -305,7 +343,7 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
       const payload = {
         name: workoutName.trim(),
         durationSeconds: Math.round(parseFloat(durationMinutes) * 60),
-        date: new Date(date).toISOString(),
+        date: new Date(`${date}T${time || '12:00'}`).toISOString(),
         exercises: exercises.map(ex => ({
           name: ex.name.trim(),
           muscles: ex.muscles,
@@ -370,7 +408,7 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
 
         <form onSubmit={handleSubmit} className="space-y-6 text-left">
           {/* General Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
                 Workout Name
@@ -393,6 +431,18 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-text-muted focus:border-accent-purple/50 focus:outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
+                Start Time
+              </label>
+              <input
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-text-muted focus:border-accent-purple/50 focus:outline-none transition-all"
               />
             </div>
@@ -425,11 +475,27 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
             {exercises.map((ex, exIdx) => (
               <div 
                 key={ex.id} 
-                className="glass-card rounded-2xl p-5 border border-white/5 relative space-y-4"
+                onDragOver={(e) => handleDragOver(e, exIdx)}
+                className={`glass-card rounded-2xl p-5 border relative space-y-4 transition-all duration-200 ${
+                  draggedIndex === exIdx 
+                    ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5 scale-[0.98]' 
+                    : 'border-white/5'
+                }`}
               >
                 {/* Exercise Header */}
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-grow relative">
+                  <div className="flex items-center gap-2 flex-grow">
+                    {/* Drag Handle */}
+                    <div 
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, exIdx)}
+                      onDragEnd={handleDragEnd}
+                      className="mt-6 cursor-grab active:cursor-grabbing text-text-muted hover:text-white transition-colors p-1 shrink-0 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/5"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical className="w-5 h-5" />
+                    </div>
+                    <div className="flex-grow relative">
                     <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block text-left mb-1.5">
                       Exercise {exIdx + 1} Name
                     </label>
@@ -458,9 +524,9 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
                               key={suggestion.id || suggestion.name}
                               type="button"
                               onMouseDown={() => handleSelectSuggestion(ex.id, suggestion)}
-                              className="w-full text-left px-4 py-3 hover:bg-white/5 text-xs text-white font-medium transition-all cursor-pointer flex justify-between items-center gap-4 border-none bg-transparent"
+                              className="w-full text-left px-4 py-3 hover:bg-white/5 text-xs text-[#d2cdcd] font-medium transition-all cursor-pointer flex justify-between items-center gap-4 border-none bg-transparent"
                             >
-                              <span className="font-bold text-white">{suggestion.name}</span>
+                              <span className="font-bold text-[#d2cdcd]">{suggestion.name}</span>
                               <span className="text-[9px] text-text-secondary bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase font-bold shrink-0">
                                 {suggestion.muscles?.join(', ')}
                               </span>
@@ -473,17 +539,21 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
                         )}
                       </div>
                     )}
+                    </div>
                   </div>
-                  {exercises.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveExercise(ex.id)}
-                      className="mt-6 p-2.5 rounded-xl bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
-                      title="Remove Exercise"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-6">
+                    {/* Remove Exercise */}
+                    {exercises.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExercise(ex.id)}
+                        className="p-2.5 rounded-xl bg-white/5 text-text-muted hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-colors cursor-pointer"
+                        title="Remove Exercise"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Muscles Hit Multi-select */}
@@ -577,7 +647,7 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
                   <button
                     type="button"
                     onClick={() => handleAddSet(ex.id)}
-                    className="py-1.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/5 text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                    className="py-1.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 text[#ede8e8] border border-white/5 text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" /> Add Set
                   </button>
@@ -599,7 +669,7 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-xs hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[#ede8e8] font-semibold text-xs hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>

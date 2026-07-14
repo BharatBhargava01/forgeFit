@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause, Search } from 'lucide-react';
+import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause, Search, GripVertical } from 'lucide-react';
 import { saveWorkoutLog, getCustomExercises, saveCustomExercise } from '@/lib/storage';
 import { EXERCISES } from '@/lib/data';
 
@@ -203,6 +203,32 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     }
   };
 
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    setLoggedExercises(prev => {
+      const updated = [...prev];
+      const item = updated[draggedIndex];
+      updated.splice(draggedIndex, 1);
+      updated.splice(index, 0, item);
+      return updated;
+    });
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   // Update Set Weight / Reps
   const handleUpdateSetField = (exId, setId, field, value) => {
     setLoggedExercises(prev => prev.map(ex => {
@@ -335,6 +361,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     const payload = {
       name: workout.name || 'Custom Workout Session',
       durationSeconds: elapsedSeconds,
+      date: new Date().toISOString(),
       exercises: loggedExercises.map(ex => ({
         name: ex.name,
         muscles: ex.muscles,
@@ -456,11 +483,29 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       {/* Exercises Log Grid */}
       <div className="space-y-6">
         {loggedExercises.map((ex, exIdx) => (
-          <div key={ex.id || exIdx} className="glass-card rounded-2xl p-5 border border-white/5 space-y-4">
+          <div 
+            key={ex.id || exIdx} 
+            onDragOver={(e) => handleDragOver(e, exIdx)}
+            className={`glass-card rounded-2xl p-5 border space-y-4 transition-all duration-200 ${
+              draggedIndex === exIdx 
+                ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5 scale-[0.98]' 
+                : 'border-white/5'
+            }`}
+          >
             
             {/* Exercise Header */}
             <div className="flex items-start justify-between pb-3 border-b border-white/5">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {/* Drag Handle */}
+                <div 
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, exIdx)}
+                  onDragEnd={handleDragEnd}
+                  className="cursor-grab active:cursor-grabbing text-text-muted hover:text-white transition-colors p-1 shrink-0 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/5"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="w-5 h-5" />
+                </div>
                 <div className="w-8 h-8 rounded-lg bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple shrink-0">
                   <Dumbbell className="w-4 h-4" />
                 </div>

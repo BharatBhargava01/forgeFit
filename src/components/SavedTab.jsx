@@ -78,7 +78,9 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
   const formatDate = (isoString) => {
     if (!isoString) return '';
     const d = new Date(isoString);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} at ${timeStr}`;
   };
 
   const formatDuration = (totalSecs) => {

@@ -310,27 +310,29 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
   // Volume Trend chart points (for selected period)
   const chartData = useMemo(() => {
     if (currentFilter === 'Today') {
-      const slots = [
-        { label: 'Morning', volume: 0 },
-        { label: 'Afternoon', volume: 0 },
-        { label: 'Evening', volume: 0 },
-        { label: 'Night', volume: 0 }
-      ];
-      filteredLogs.forEach(log => {
+      // Sort logs chronologically by logged time
+      const sortedLogs = [...filteredLogs].sort((a, b) => {
+        const ad = new Date(a.loggedAt || a.date).getTime();
+        const bd = new Date(b.loggedAt || b.date).getTime();
+        return ad - bd;
+      });
+
+      return sortedLogs.map(log => {
         const d = new Date(log.loggedAt || log.date);
-        const hour = d.getHours();
+        const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        
         let vol = 0;
         log.exercises?.forEach(ex => {
           ex.sets?.forEach(s => {
             if (s.completed) vol += (s.weight || 0);
           });
         });
-        if (hour >= 5 && hour < 12) slots[0].volume += vol;
-        else if (hour >= 12 && hour < 17) slots[1].volume += vol;
-        else if (hour >= 17 && hour < 21) slots[2].volume += vol;
-        else slots[3].volume += vol;
+        
+        return {
+          label: timeStr,
+          volume: vol
+        };
       });
-      return slots;
     }
 
     if (currentFilter === 'Weekly') {
@@ -1390,6 +1392,14 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
                                 <Clock className="w-3 h-3" />
                                 {formatDuration(log.durationSeconds)}
                               </span>
+                              {(log.loggedAt || log.date) && (
+                                <>
+                                  <span>·</span>
+                                  <span>
+                                    {new Date(log.loggedAt || log.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                  </span>
+                                </>
+                              )}
                               <span>·</span>
                               <span>{completedSets} sets</span>
                               {totalWeight > 0 && (
