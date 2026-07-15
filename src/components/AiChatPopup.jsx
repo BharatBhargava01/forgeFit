@@ -205,16 +205,16 @@ export default function AiChatPopup({ user, showToast }) {
 
       {/* Chat Popup Widget */}
       {isOpen && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] h-[550px] max-h-[calc(100vh-100px)] bg-white rounded-[2rem] shadow-2xl border border-black/[0.04] overflow-hidden flex flex-col animate-slide-up">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] h-[550px] max-h-[calc(100vh-100px)] bg-bg-card rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col animate-slide-up">
           
           {/* Header Panel */}
-          <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
+          <div className="px-5 py-4 border-b border-white/10 bg-bg-card flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-md">
                 <Sparkles className="w-5 h-5 fill-white/20 text-white" />
               </div>
               <div className="text-left">
-                <h3 className="font-heading font-black text-sm text-[#1e1f22] tracking-tight leading-none">
+                <h3 className="font-heading font-black text-sm text-text-primary tracking-tight leading-none">
                   AI Fitness Coach
                 </h3>
                 <span className="text-[10px] text-text-secondary font-bold tracking-wide mt-1 block">
@@ -228,7 +228,7 @@ export default function AiChatPopup({ user, showToast }) {
               {messages.length > 1 && (
                 <button
                   onClick={handleClearChat}
-                  className="p-1.5 rounded-lg text-text-secondary hover:text-accent-rose hover:bg-rose-50 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-text-secondary hover:text-accent-rose hover:bg-accent-rose/10 transition-colors cursor-pointer"
                   title="Clear Chat History"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -237,7 +237,7 @@ export default function AiChatPopup({ user, showToast }) {
               {/* Close Button */}
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-gray-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-card-light transition-colors cursor-pointer"
                 title="Close chat"
               >
                 <X className="w-4 h-4 text-text-secondary" />
@@ -246,7 +246,7 @@ export default function AiChatPopup({ user, showToast }) {
           </div>
 
           {/* Scrollable messages container */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/50">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-bg-dark/50">
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
               return (
@@ -260,14 +260,14 @@ export default function AiChatPopup({ user, showToast }) {
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
                       isUser
-                        ? 'bg-gradient-to-br from-accent-indigo to-accent-purple text-white font-extrabold text-xs'
-                        : 'bg-white border border-gray-200 text-indigo-500'
+                        ? 'bg-accent-indigo bg-gradient-to-br from-accent-indigo to-accent-purple text-white font-extrabold text-xs'
+                        : 'bg-bg-card border border-white/10 text-accent-indigo'
                     }`}
                   >
                     {isUser ? (
                       user?.name ? user.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 fill-indigo-500/10" />
+                      <Sparkles className="w-3.5 h-3.5 fill-accent-indigo/10" />
                     )}
                   </div>
 
@@ -279,8 +279,8 @@ export default function AiChatPopup({ user, showToast }) {
                     <div
                       className={`px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap font-medium text-left ${
                         isUser
-                          ? 'bg-[#1e1f22] text-white rounded-tr-none'
-                          : 'bg-white border border-gray-150/60 text-[#1e1f22] rounded-tl-none shadow-sm'
+                          ? 'bg-accent-indigo bg-gradient-to-br from-accent-indigo to-accent-purple text-white rounded-tr-none shadow-sm'
+                          : 'bg-bg-card border border-white/10 text-text-primary rounded-tl-none shadow-sm'
                       }`}
                     >
                       {msg.content}
@@ -293,15 +293,15 @@ export default function AiChatPopup({ user, showToast }) {
             {/* AI Generation Loading Indicator */}
             {loading && (
               <div className="flex items-start gap-2.5 max-w-[80%] mr-auto text-left">
-                <div className="w-8 h-8 rounded-full bg-white border border-gray-200 text-indigo-500 flex items-center justify-center shrink-0 animate-pulse">
-                  <Sparkles className="w-3.5 h-3.5 fill-indigo-500/10" />
+                <div className="w-8 h-8 rounded-full bg-bg-card border border-white/10 text-accent-indigo flex items-center justify-center shrink-0 animate-pulse">
+                  <Sparkles className="w-3.5 h-3.5 fill-accent-indigo/10" />
                 </div>
                 <div className="space-y-0.5">
                   <span className="text-[9px] font-bold text-text-secondary px-1 uppercase tracking-wide block">
                     AI Coach
                   </span>
-                  <div className="px-4 py-2.5 rounded-2xl rounded-tl-none bg-white border border-gray-150/60 text-text-secondary text-xs flex items-center gap-1.5 shadow-sm">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                  <div className="px-4 py-2.5 rounded-2xl rounded-tl-none bg-bg-card border border-white/10 text-text-secondary text-xs flex items-center gap-1.5 shadow-sm">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-indigo" />
                     <span className="font-semibold text-xs">Coach is typing...</span>
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export default function AiChatPopup({ user, showToast }) {
           </div>
 
           {/* Bottom input area */}
-          <div className="border-t border-gray-100 bg-white p-3 shrink-0">
+          <div className="border-t border-white/10 bg-bg-card p-3 shrink-0">
             {/* Quick Suggestion Chips */}
             <div className="flex gap-1.5 overflow-x-auto pb-2 px-1 scrollbar-hide snap-x">
               {suggestedPrompts.map((prompt, idx) => (
@@ -319,7 +319,7 @@ export default function AiChatPopup({ user, showToast }) {
                   key={idx}
                   onClick={() => handleSendPrompt(prompt)}
                   disabled={loading}
-                  className="snap-center shrink-0 px-3 py-1.5 rounded-full bg-gray-50 hover:bg-indigo-50/50 hover:text-indigo-600 border border-gray-150/80 hover:border-indigo-200 text-[10px] font-bold text-text-secondary transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="snap-center shrink-0 px-3 py-1.5 rounded-full bg-bg-dark/50 hover:bg-accent-indigo/10 hover:text-accent-indigo border border-white/10 hover:border-accent-indigo/30 text-[10px] font-bold text-text-secondary transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {prompt}
                 </button>
@@ -334,12 +334,12 @@ export default function AiChatPopup({ user, showToast }) {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={loading}
-                className="flex-grow px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-150 text-xs font-semibold outline-none text-[#1e1f22] focus:border-accent-purple focus:bg-white transition-all disabled:opacity-75"
+                className="flex-grow px-4 py-2.5 rounded-xl bg-bg-dark/50 border border-white/10 text-xs font-semibold outline-none text-text-primary focus:border-accent-purple focus:bg-bg-card transition-all disabled:opacity-75"
               />
               <button
                 type="submit"
                 disabled={loading || !inputValue.trim()}
-                className="w-9 h-9 rounded-xl bg-[#1e1f22] hover:bg-[#2d2e33] text-white flex items-center justify-center transition-all shadow cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-9 h-9 rounded-xl bg-accent-indigo bg-gradient-to-br from-accent-indigo to-accent-purple hover:opacity-90 text-white flex items-center justify-center transition-all shadow cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-3.5 h-3.5 text-white" />
               </button>

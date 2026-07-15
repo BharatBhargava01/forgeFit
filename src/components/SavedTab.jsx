@@ -268,7 +268,7 @@ export default function SavedTab({ onStartWorkout, onInspectWorkout, onInspectRo
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted mt-1 items-center">
                         <span className="flex items-center gap-1 font-semibold text-text-secondary">
                           <Calendar className="w-3.5 h-3.5" />
-                          {formatDate(log.loggedAt || log.date)}
+                          {formatDate(log.date || log.loggedAt)}
                         </span>
                         <span>·</span>
                         <span className="flex items-center gap-1">

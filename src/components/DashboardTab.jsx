@@ -16,7 +16,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
     if (!logs.length) return [];
     
     return logs.filter(log => {
-      const logDate = new Date(log.loggedAt || log.date);
+      const logDate = new Date(log.date || log.loggedAt);
       if (isNaN(logDate.getTime())) return false;
       
       const refDate = new Date(selectedDate);
@@ -123,7 +123,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
   const activeDaysMap = useMemo(() => {
     const map = new Map();
     logs.forEach(log => {
-      const dStr = getLocalDateString(log.loggedAt || log.date);
+      const dStr = getLocalDateString(log.date || log.loggedAt);
       if (dStr) {
         if (!map.has(dStr)) {
           map.set(dStr, []);
@@ -266,7 +266,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
     filteredLogs.forEach(log => {
       totalDurationSeconds += log.durationSeconds || 0;
       
-      const logDate = new Date(log.loggedAt || log.date);
+      const logDate = new Date(log.date || log.loggedAt);
       if (logDate >= sevenDaysAgo) {
         workoutsPast7Days++;
       }
@@ -312,13 +312,13 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
     if (currentFilter === 'Today') {
       // Sort logs chronologically by logged time
       const sortedLogs = [...filteredLogs].sort((a, b) => {
-        const ad = new Date(a.loggedAt || a.date).getTime();
-        const bd = new Date(b.loggedAt || b.date).getTime();
+        const ad = new Date(a.date || a.loggedAt).getTime();
+        const bd = new Date(b.date || b.loggedAt).getTime();
         return ad - bd;
       });
 
       return sortedLogs.map(log => {
-        const d = new Date(log.loggedAt || log.date);
+        const d = new Date(log.date || log.loggedAt);
         const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         
         let vol = 0;
@@ -339,7 +339,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const slots = daysOfWeek.map(label => ({ label, volume: 0 }));
       filteredLogs.forEach(log => {
-        const d = new Date(log.loggedAt || log.date);
+        const d = new Date(log.date || log.loggedAt);
         const day = d.getDay(); // Sun = 0, Mon = 1...
         const index = day === 0 ? 6 : day - 1;
         let vol = 0;
@@ -363,7 +363,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
         { label: 'Week 4', volume: 0 }
       ];
       filteredLogs.forEach(log => {
-        const d = new Date(log.loggedAt || log.date);
+        const d = new Date(log.date || log.loggedAt);
         const dateNum = d.getDate();
         let vol = 0;
         log.exercises?.forEach(ex => {
@@ -383,7 +383,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const slots = months.map(label => ({ label, volume: 0 }));
       filteredLogs.forEach(log => {
-        const d = new Date(log.loggedAt || log.date);
+        const d = new Date(log.date || log.loggedAt);
         const monthIndex = d.getMonth();
         let vol = 0;
         log.exercises?.forEach(ex => {
@@ -730,12 +730,51 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const totalCals = parsed.reduce((acc, m) => acc + (m.calories || 0), 0);
-          const totalProtein = parsed.reduce((acc, m) => acc + (m.protein || 0), 0);
-          const totalCarbs = parsed.reduce((acc, m) => acc + (m.carbs || 0), 0);
-          const totalFats = parsed.reduce((acc, m) => acc + (m.fats || 0), 0);
+          const refDate = new Date(selectedDate);
+          
+          const filteredMeals = parsed.filter(meal => {
+            let mealDate = new Date();
+            if (meal.id && meal.id.length > 5 && !isNaN(parseInt(meal.id))) {
+              mealDate = new Date(parseInt(meal.id));
+            }
+            if (isNaN(mealDate.getTime())) return false;
+
+            if (currentFilter === 'Today') {
+              return mealDate.getFullYear() === refDate.getFullYear() &&
+                     mealDate.getMonth() === refDate.getMonth() &&
+                     mealDate.getDate() === refDate.getDate();
+            }
+            
+            if (currentFilter === 'Weekly') {
+              const refDay = refDate.getDay();
+              const diffToMonday = refDay === 0 ? -6 : 1 - refDay;
+              const startOfWeek = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() + diffToMonday);
+              startOfWeek.setHours(0, 0, 0, 0);
+              
+              const endOfWeek = new Date(startOfWeek);
+              endOfWeek.setDate(startOfWeek.getDate() + 7);
+              
+              return mealDate >= startOfWeek && mealDate < endOfWeek;
+            }
+            
+            if (currentFilter === 'Monthly') {
+              return mealDate.getFullYear() === refDate.getFullYear() &&
+                     mealDate.getMonth() === refDate.getMonth();
+            }
+            
+            if (currentFilter === 'Yearly') {
+              return mealDate.getFullYear() === refDate.getFullYear();
+            }
+            
+            return true;
+          });
+
+          const totalCals = filteredMeals.reduce((acc, m) => acc + (m.calories || 0), 0);
+          const totalProtein = filteredMeals.reduce((acc, m) => acc + (m.protein || 0), 0);
+          const totalCarbs = filteredMeals.reduce((acc, m) => acc + (m.carbs || 0), 0);
+          const totalFats = filteredMeals.reduce((acc, m) => acc + (m.fats || 0), 0);
           return {
-            meals: parsed,
+            meals: filteredMeals,
             totalCalories: totalCals,
             totalProtein,
             totalCarbs,
@@ -753,10 +792,50 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       totalCarbs: 0,
       totalFats: 0
     };
-  }, []);
+  }, [currentFilter, selectedDate]);
+
+  const scaledTargets = useMemo(() => {
+    const refDate = new Date(selectedDate);
+    let scaleMultiplier = 1;
+    let label = 'Daily';
+
+    if (currentFilter === 'Weekly') {
+      scaleMultiplier = 7;
+      label = 'Weekly';
+    } else if (currentFilter === 'Monthly') {
+      const year = refDate.getFullYear();
+      const month = refDate.getMonth();
+      scaleMultiplier = new Date(year, month + 1, 0).getDate();
+      label = 'Monthly';
+    } else if (currentFilter === 'Yearly') {
+      scaleMultiplier = 365;
+      label = 'Yearly';
+    }
+
+    const scaledCalories = calorieTarget * scaleMultiplier;
+    const pTarget = Math.round((scaledCalories * (macroDist.p / 100)) / 4);
+    const cTarget = Math.round((scaledCalories * (macroDist.c / 100)) / 4);
+    const fTarget = Math.round((scaledCalories * (macroDist.f / 100)) / 9);
+
+    return {
+      calories: scaledCalories,
+      protein: pTarget,
+      carbs: cTarget,
+      fats: fTarget,
+      label
+    };
+  }, [currentFilter, selectedDate, calorieTarget, macroDist]);
+
+  const mealsPreviewLabel = useMemo(() => {
+    if (currentFilter === 'Today') return "Today's Meals Preview";
+    if (currentFilter === 'Weekly') return "Weekly Meals Preview";
+    if (currentFilter === 'Monthly') return "Monthly Meals Preview";
+    if (currentFilter === 'Yearly') return "Yearly Meals Preview";
+    return "Meals Preview";
+  }, [currentFilter]);
 
   const calculatedWellnessIndex = useMemo(() => {
-    const targetCals = calorieTarget;
+    const targetCals = scaledTargets.calories;
     
     // 1. Workout sets score (target 5 completed sets in past 7 days)
     let setCounter = 0;
@@ -775,10 +854,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
     // 2. Nutrition score (how close to target calories)
     const currentCals = nutritionData.totalCalories;
-    const nutritionScore = Math.max(0, 100 - Math.abs((currentCals - targetCals) / targetCals) * 100);
+    const nutritionScore = Math.max(0, 100 - Math.abs((currentCals - targetCals) / (targetCals || 1)) * 100);
 
     return Math.round(workoutScore * 0.50 + nutritionScore * 0.50);
-  }, [filteredLogs, nutritionData, calorieTarget]);
+  }, [filteredLogs, nutritionData, scaledTargets]);
 
   if (loading) {
     return (
@@ -987,23 +1066,23 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
               <h4 className="font-heading font-black text-4xl text-[#ededed] tracking-tight">
                 {nutritionData.totalCalories.toLocaleString()}
               </h4>
-              <span className="text-text-secondary text-xs font-semibold ml-0.5">/ {calorieTarget} kcal consumed</span>
+              <span className="text-text-secondary text-xs font-semibold ml-0.5">/ {scaledTargets.calories.toLocaleString()} kcal consumed</span>
             </div>
 
             {/* Calorie Progress Bar */}
             <div className="w-full bg-[#161624]/60 h-2.5 rounded-full overflow-hidden mt-3">
               <div
                 className="h-full bg-gradient-to-r from-emerald-500 to-accent-cyan rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, Math.round((nutritionData.totalCalories / calorieTarget) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.round((nutritionData.totalCalories / (scaledTargets.calories || 1)) * 100))}%` }}
               />
             </div>
             
             <div className="flex items-center justify-between mt-2 text-[10px] font-bold text-text-secondary">
-              <span>{Math.round((nutritionData.totalCalories / calorieTarget) * 100)}% of Daily Target</span>
-              <span className={calorieTarget - nutritionData.totalCalories >= 0 ? 'text-accent-emerald' : 'text-accent-rose'}>
-                {calorieTarget - nutritionData.totalCalories >= 0
-                  ? `${calorieTarget - nutritionData.totalCalories} kcal remaining`
-                  : `${Math.abs(calorieTarget - nutritionData.totalCalories)} kcal over target`}
+              <span>{Math.round((nutritionData.totalCalories / (scaledTargets.calories || 1)) * 100)}% of {scaledTargets.label} Target</span>
+              <span className={scaledTargets.calories - nutritionData.totalCalories >= 0 ? 'text-accent-emerald' : 'text-accent-rose'}>
+                {scaledTargets.calories - nutritionData.totalCalories >= 0
+                  ? `${(scaledTargets.calories - nutritionData.totalCalories).toLocaleString()} kcal remaining`
+                  : `${Math.abs(scaledTargets.calories - nutritionData.totalCalories).toLocaleString()} kcal over target`}
               </span>
             </div>
           </div>
@@ -1018,10 +1097,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
               <div className="w-full bg-[#161624] h-1.5 rounded-full overflow-hidden font-medium">
                 <div
                   className="bg-[#f43f5e] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalProtein / (targetProtein || 1)) * 100))}%` }}
+                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalProtein / (scaledTargets.protein || 1)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[8px] text-[#a0a0b8] font-bold block">{targetProtein}g target</span>
+              <span className="text-[8px] text-[#a0a0b8] font-bold block">{scaledTargets.protein}g target</span>
             </div>
 
             <div className="space-y-1">
@@ -1032,10 +1111,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
               <div className="w-full bg-[#161624] h-1.5 rounded-full overflow-hidden font-medium">
                 <div
                   className="bg-[#f59e0b] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalCarbs / (targetCarbs || 1)) * 100))}%` }}
+                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalCarbs / (scaledTargets.carbs || 1)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[8px] text-[#a0a0b8] font-bold block">{targetCarbs}g target</span>
+              <span className="text-[8px] text-[#a0a0b8] font-bold block">{scaledTargets.carbs}g target</span>
             </div>
 
             <div className="space-y-1">
@@ -1046,10 +1125,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
               <div className="w-full bg-[#161624] h-1.5 rounded-full overflow-hidden font-medium">
                 <div
                   className="bg-[#06b6d4] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalFats / (targetFats || 1)) * 100))}%` }}
+                  style={{ width: `${Math.min(100, Math.round((nutritionData.totalFats / (scaledTargets.fats || 1)) * 100))}%` }}
                 />
               </div>
-              <span className="text-[8px] text-[#a0a0b8] font-bold block">{targetFats}g target</span>
+              <span className="text-[8px] text-[#a0a0b8] font-bold block">{scaledTargets.fats}g target</span>
             </div>
           </div>
 
@@ -1078,10 +1157,10 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
           {/* Logged Meals List */}
           <div className="space-y-2 text-left">
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Today's Meals Preview</span>
+            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">{mealsPreviewLabel}</span>
             <div className="bg-[#161624] border border-white/5 rounded-2xl p-3 space-y-2.5 max-h-[110px] overflow-y-auto custom-scrollbar">
               {nutritionData.meals.length === 0 ? (
-                <div className="text-center py-2 text-[10px] text-text-muted italic">No meals logged for today.</div>
+                <div className="text-center py-2 text-[10px] text-text-muted italic">No meals logged for selected period.</div>
               ) : (
                 nutritionData.meals.slice(0, 3).map((meal) => (
                   <div key={meal.id} className="flex justify-between items-center text-[11px] border-b border-white/5 pb-2 last:border-b-0 last:pb-0 font-medium">
@@ -1392,11 +1471,11 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
                                 <Clock className="w-3 h-3" />
                                 {formatDuration(log.durationSeconds)}
                               </span>
-                              {(log.loggedAt || log.date) && (
+                              {(log.date || log.loggedAt) && (
                                 <>
                                   <span>·</span>
                                   <span>
-                                    {new Date(log.loggedAt || log.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    {new Date(log.date || log.loggedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
                                   </span>
                                 </>
                               )}

@@ -75,9 +75,9 @@ export default function AddWorkoutModal({ isOpen, onClose, onSaveSuccess, showTo
     if (isOpen) {
       if (logToEdit) {
         setWorkoutName(logToEdit.name || 'Workout Session');
-        const localDate = getLocalDateString(logToEdit.loggedAt || logToEdit.date);
+        const localDate = getLocalDateString(logToEdit.date || logToEdit.loggedAt);
         setDate(localDate);
-        const localTime = getLocalTimeStr(logToEdit.loggedAt || logToEdit.date);
+        const localTime = getLocalTimeStr(logToEdit.date || logToEdit.loggedAt);
         setTime(localTime || '12:00');
         setDurationMinutes(Math.round((logToEdit.durationSeconds || 0) / 60) || 45);
         

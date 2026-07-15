@@ -50,7 +50,7 @@ export async function POST(request) {
     const logsSummary = logs.slice(0, 10).map(log => ({
       name: log.name,
       durationMinutes: Math.round((log.durationSeconds || 0) / 60),
-      date: log.loggedAt || log.date,
+      date: log.date || log.loggedAt,
       exercises: (log.exercises || []).map(ex => ({
         name: ex.name,
         muscles: ex.muscles,

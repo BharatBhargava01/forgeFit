@@ -239,7 +239,7 @@ export async function saveWorkoutLog(log) {
     return result;
   } catch {
     const logs = readLocal('wg_workout_logs');
-    const entry = { id: generateId(), ...log, loggedAt: new Date().toISOString() };
+    const entry = { id: generateId(), ...log, loggedAt: log.date || new Date().toISOString() };
     logs.unshift(entry);
     writeLocal('wg_workout_logs', logs);
     return entry;

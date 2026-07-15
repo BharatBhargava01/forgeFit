@@ -113,7 +113,7 @@ export default function ProfileTab({
     const workoutItems = logs.map(log => ({
       ...log,
       logType: 'workout',
-      timestamp: new Date(log.loggedAt || log.date).getTime()
+      timestamp: new Date(log.date || log.loggedAt).getTime()
     }));
 
     const mealItems = mealLogs.map(meal => {
@@ -346,21 +346,22 @@ export default function ProfileTab({
     
     const titleInfo = levelTitles[Math.min(6, level)] || levelTitles[6];
 
+    // Helper to get local YYYY-MM-DD string
+    const getLocalDateString = (d) => {
+      const offset = d.getTimezoneOffset();
+      const adjustedDate = new Date(d.getTime() - (offset*60*1000));
+      return adjustedDate.toISOString().split('T')[0];
+    };
+
     // Weekly consistency streak calculation
     const dates = logs.map(l => {
-      const d = new Date(l.loggedAt || l.date);
-      return d.toISOString().split('T')[0];
+      const d = new Date(l.date || l.loggedAt);
+      return getLocalDateString(d);
     });
     const uniqueDates = Array.from(new Set(dates)).sort((a, b) => new Date(b) - new Date(a));
 
     let streak = 0;
     if (uniqueDates.length > 0) {
-      const getLocalDateString = (d) => {
-        const offset = d.getTimezoneOffset();
-        const adjustedDate = new Date(d.getTime() - (offset*60*1000));
-        return adjustedDate.toISOString().split('T')[0];
-      };
-      
       const todayStr = getLocalDateString(new Date());
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -399,7 +400,7 @@ export default function ProfileTab({
     
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-      const dStr = d.toISOString().split('T')[0];
+      const dStr = getLocalDateString(d);
       const hasLog = dates.includes(dStr);
       weekDaysStatus.push({
         name: dayNames[i],
@@ -1479,7 +1480,7 @@ export default function ProfileTab({
                             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6a6a80] mt-1 items-center">
                               <span className="flex items-center gap-1 font-semibold text-[#a0a0b8]">
                                 <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(log.loggedAt || log.date)}
+                                {formatDate(log.date || log.loggedAt)}
                               </span>
                               <span>·</span>
                               <span className="flex items-center gap-1">
