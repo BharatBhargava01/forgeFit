@@ -869,10 +869,10 @@ export default function RoutinesTab({ showToast, prefilledRoutine, clearPrefill,
                                   : 'border-white/5 hover:border-white/10'
                               }`}
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <GripVertical className="w-3.5 h-3.5 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing shrink-0" />
                                 <Dumbbell className="w-3.5 h-3.5 text-accent-indigo shrink-0" />
-                                <span className="font-bold text-white text-left">{ex.name}</span>
+                                <span className="font-bold text-white text-left truncate">{ex.name}</span>
                               </div>
                               
                               <div className="flex items-center gap-3 w-full sm:w-auto justify-end shrink-0">

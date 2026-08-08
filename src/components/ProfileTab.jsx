@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle,
-  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X
+  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X, Trophy, Target, Medal, Star, Lock, Unlock
 } from 'lucide-react';
 import { generateBlueprint } from '@/lib/generator';
 import {
@@ -13,6 +13,7 @@ import {
   deleteWorkoutLog
 } from '@/lib/storage';
 import AddWorkoutModal from './AddWorkoutModal';
+import { useGamification } from '@/context/GamificationContext';
 
 export default function ProfileTab({ 
   user, 
@@ -32,6 +33,74 @@ export default function ProfileTab({
   themeSetting = 'light',
   onChangeTheme
 }) {
+  const { gamification: gamificationContext, achievements: achievementsContext, levelProgress } = useGamification();
+
+  // Storage data states
+  const [savedWorkouts, setSavedWorkouts] = useState([]);
+  const [savedRoutines, setSavedRoutines] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [mealLogs, setMealLogs] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Computed gamification for Profile-specific fields (weekly checkmarks, level titles) synced with global GamificationContext
+  const localGamification = useMemo(() => {
+    const currentLevel = gamificationContext?.level || 1;
+    const streak = gamificationContext?.streak || 0;
+    const progressPercent = levelProgress?.progressPercent || 0;
+    const currentLevelXP = levelProgress?.xpInCurrentLevel || 0;
+    const xpNeededForNext = levelProgress?.xpNeededForNext || 100;
+    const totalXP = gamificationContext?.xp || 0;
+
+    const titleInfo = {
+      name: levelProgress?.levelTitle || '🥚 Novice Lifter',
+      desc: levelProgress?.levelTitleDesc || 'Starting your training journey. Build the habit!'
+    };
+
+    // Helper to get local YYYY-MM-DD string
+    const getLocalDateString = (d) => {
+      const offset = d.getTimezoneOffset();
+      const adjustedDate = new Date(d.getTime() - (offset * 60 * 1000));
+      return adjustedDate.toISOString().split('T')[0];
+    };
+
+    const dates = logs.map(l => {
+      const d = new Date(l.date || l.loggedAt);
+      return getLocalDateString(d);
+    });
+
+    // Weekly checkmark calendar (Monday to Sunday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+    
+    const weekDaysStatus = [];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      const dStr = getLocalDateString(d);
+      const hasLog = dates.includes(dStr);
+      weekDaysStatus.push({
+        name: dayNames[i],
+        dayOfMonth: d.getDate(),
+        active: hasLog
+      });
+    }
+
+    return {
+      level: currentLevel,
+      title: titleInfo.name,
+      desc: titleInfo.desc,
+      totalXP,
+      currentLevelXP,
+      xpNeededForNext,
+      progressPercent,
+      streak,
+      weekDaysStatus
+    };
+  }, [logs, gamificationContext, levelProgress]);
+
   const handleLogoutClick = () => {
     if (confirm("Are you sure you want to sign out?")) {
       onSignOut();
@@ -47,13 +116,6 @@ export default function ProfileTab({
 
   // Navigation inside the profile
   const [activeSubTab, setActiveSubTab] = useState('overview'); // 'overview', 'workouts', 'routines', 'history', 'settings'
-
-  // Storage data states
-  const [savedWorkouts, setSavedWorkouts] = useState([]);
-  const [savedRoutines, setSavedRoutines] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [mealLogs, setMealLogs] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
 
   // Search filter for workouts
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,118 +370,7 @@ export default function ProfileTab({
     ];
   }, [metrics]);
 
-  const gamification = useMemo(() => {
-    const workouts = logs.length;
-    let durationSeconds = 0;
-    let volumeLifted = 0;
 
-    logs.forEach(log => {
-      durationSeconds += log.durationSeconds || 0;
-      if (log.exercises) {
-        log.exercises.forEach(ex => {
-          if (Array.isArray(ex.sets)) {
-            ex.sets.forEach(set => {
-              if (set.completed) {
-                volumeLifted += (set.weight || 0);
-              }
-            });
-          }
-        });
-      }
-    });
-
-    // 100 XP per workout, 1 XP per 10kg lifted, 1 XP per 60 seconds training
-    const totalXP = (workouts * 100) + Math.floor(volumeLifted / 10) + Math.floor(durationSeconds / 60);
-    const xpPerLevel = 1000;
-    const level = Math.floor(totalXP / xpPerLevel) + 1;
-    const currentLevelXP = totalXP % xpPerLevel;
-    const progressPercent = Math.min(100, (currentLevelXP / xpPerLevel) * 100);
-
-    const levelTitles = {
-      1: { name: '🥚 Novice Lifter', desc: 'Starting your training journey. Build the habit!' },
-      2: { name: '🔨 Iron Apprentice', desc: 'Developing solid fundamentals and form consistency.' },
-      3: { name: '🏃 Consistency Cadet', desc: 'Overcoming pain barriers and logging regular sessions.' },
-      4: { name: '🏋️ Barbell Baron', desc: 'Pushing heavy volume targets with high efficiency.' },
-      5: { name: '⚔️ Steel Warrior', desc: 'Unlocking expert training schedules and intensity.' },
-      6: { name: '👑 Beast Mode Legend', desc: 'Achieved elite volume metrics and training consistency.' }
-    };
-    
-    const titleInfo = levelTitles[Math.min(6, level)] || levelTitles[6];
-
-    // Helper to get local YYYY-MM-DD string
-    const getLocalDateString = (d) => {
-      const offset = d.getTimezoneOffset();
-      const adjustedDate = new Date(d.getTime() - (offset*60*1000));
-      return adjustedDate.toISOString().split('T')[0];
-    };
-
-    // Weekly consistency streak calculation
-    const dates = logs.map(l => {
-      const d = new Date(l.date || l.loggedAt);
-      return getLocalDateString(d);
-    });
-    const uniqueDates = Array.from(new Set(dates)).sort((a, b) => new Date(b) - new Date(a));
-
-    let streak = 0;
-    if (uniqueDates.length > 0) {
-      const todayStr = getLocalDateString(new Date());
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = getLocalDateString(yesterday);
-      
-      let checkDate = null;
-      if (uniqueDates.includes(todayStr)) {
-        checkDate = new Date();
-        streak = 1;
-      } else if (uniqueDates.includes(yesterdayStr)) {
-        checkDate = yesterday;
-        streak = 1;
-      }
-      
-      if (streak > 0) {
-        while (true) {
-          checkDate.setDate(checkDate.getDate() - 1);
-          const dateStr = getLocalDateString(checkDate);
-          if (uniqueDates.includes(dateStr)) {
-            streak++;
-          } else {
-            break;
-          }
-        }
-      }
-    }
-
-    // Weekly checkmark calendar (Monday to Sunday)
-    const now = new Date();
-    const currentDay = now.getDay();
-    const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
-    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
-    
-    const weekDaysStatus = [];
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-      const dStr = getLocalDateString(d);
-      const hasLog = dates.includes(dStr);
-      weekDaysStatus.push({
-        name: dayNames[i],
-        dayOfMonth: d.getDate(),
-        active: hasLog
-      });
-    }
-
-    return {
-      totalXP,
-      level,
-      currentLevelXP,
-      progressPercent,
-      title: titleInfo.name,
-      desc: titleInfo.desc,
-      streak,
-      weekDaysStatus
-    };
-  }, [logs]);
 
   // General metrics calculations
   const calculateBMI = () => {
@@ -871,6 +822,7 @@ export default function ProfileTab({
       <div className="flex bg-[#161624] border border-white/10 rounded-2xl p-1 mb-8 overflow-x-auto max-w-full scrollbar-thin">
         {[
           { id: 'overview', label: 'Overview', icon: Award },
+          { id: 'achievements', label: 'Achievements', icon: Trophy },
           { id: 'workouts', label: 'Saved Workouts', icon: Dumbbell },
           { id: 'routines', label: 'Routines', icon: Calendar },
           { id: 'history', label: 'History & Logs', icon: History },
@@ -913,7 +865,7 @@ export default function ProfileTab({
                     <circle cx="48" cy="48" r="42" stroke="var(--heatmap-empty-stroke, rgba(255,255,255,0.08))" strokeWidth="6" fill="transparent" />
                     <circle cx="48" cy="48" r="42" stroke="url(#levelGradient)" strokeWidth="6" fill="transparent"
                       strokeDasharray="264"
-                      strokeDashoffset={264 - (264 * gamification.progressPercent) / 100}
+                      strokeDashoffset={264 - (264 * levelProgress.progressPercent) / 100}
                       strokeLinecap="round"
                     />
                     <defs>
@@ -925,28 +877,28 @@ export default function ProfileTab({
                   </svg>
                   <div className="flex flex-col items-center select-none z-10">
                     <span className="text-[10px] text-[#a0a0b8] uppercase font-bold tracking-wider">Level</span>
-                    <span className="text-3xl font-heading font-black text-white">{gamification.level}</span>
+                    <span className="text-3xl font-heading font-black text-white">{gamificationContext.level}</span>
                   </div>
                 </div>
 
                 {/* Level Title details */}
                 <div className="text-center sm:text-left space-y-1.5 flex-grow">
                   <span className="text-xl font-heading font-black text-white flex items-center justify-center sm:justify-start gap-2">
-                    {gamification.title}
+                    {localGamification.title}
                   </span>
                   <p className="text-xs text-[#a0a0b8] leading-relaxed max-w-sm">
-                    {gamification.desc}
+                    {localGamification.desc}
                   </p>
                   
                   {/* Horizontal progress tracker */}
                   <div className="space-y-1 pt-1.5">
                     <div className="flex justify-between text-[10px] font-bold text-[#6a6a80]">
                       <span>XP Progress</span>
-                      <span>{gamification.currentLevelXP} / 1000 XP</span>
+                      <span>{localGamification.currentLevelXP.toLocaleString()} / {localGamification.xpNeededForNext.toLocaleString()} XP</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-[#161624] overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple rounded-full"
-                        style={{ width: `${gamification.progressPercent}%` }}
+                        style={{ width: `${localGamification.progressPercent}%` }}
                       ></div>
                     </div>
                   </div>
@@ -964,7 +916,7 @@ export default function ProfileTab({
                   <div>
                     <span className="text-[10px] text-[#a0a0b8] uppercase font-bold tracking-wider block">Consistency Streak</span>
                     <span className="text-base font-heading font-extrabold text-white flex items-center gap-1.5">
-                      {gamification.streak} {gamification.streak === 1 ? 'Active Day' : 'Consecutive Days'}
+                      {localGamification.streak} {localGamification.streak === 1 ? 'Active Day' : 'Consecutive Days'}
                     </span>
                   </div>
                 </div>
@@ -973,7 +925,7 @@ export default function ProfileTab({
                 <div className="space-y-2">
                   <span className="text-[9px] text-[#6a6a80] font-bold uppercase tracking-wider block">Weekly Consistency</span>
                   <div className="grid grid-cols-7 gap-1">
-                    {gamification.weekDaysStatus.map((day, idx) => (
+                    {localGamification.weekDaysStatus.map((day, idx) => (
                       <div key={idx} className="flex flex-col items-center gap-1">
                         <span className="text-[8px] text-[#6a6a80] font-extrabold uppercase">{day.name}</span>
                         <div className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
@@ -1201,26 +1153,48 @@ export default function ProfileTab({
                   Milestones & Achievements
                 </h3>
                 
-                <div className="space-y-3.5">
-                  {achievements.map((ach) => (
+                <div className="space-y-3">
+                  {achievementsContext.map((ach) => (
                     <div
                       key={ach.id}
-                      className={`bg-[#161624] rounded-xl p-3.5 border transition-all flex items-center gap-4 ${
+                      className={`rounded-xl p-3.5 border transition-all flex items-center justify-between gap-4 ${
                         ach.unlocked
-                          ? 'border-white/5 bg-[#161624]'
-                          : 'border-white/5 bg-[#161624] opacity-35 select-none'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-white shadow-sm'
+                          : 'bg-white/5 border-white/10'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-xl border ${
-                        ach.unlocked
-                          ? 'bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-purple/20'
-                          : 'bg-[#12121a] border-white/10'
-                      }`}>
-                        {ach.unlocked ? ach.icon : '🔒'}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border shrink-0 ${
+                          ach.unlocked
+                            ? 'bg-gradient-to-br from-accent-gold to-accent-amber text-[#0a0a0f] border-accent-gold/40 shadow-md shadow-accent-gold/20'
+                            : 'bg-white/5 border-white/10 text-text-muted'
+                        }`}>
+                          {ach.icon}
+                        </div>
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-xs truncate ${ach.unlocked ? 'text-white font-extrabold' : 'text-text-secondary'}`}>
+                              {ach.name || ach.title}
+                            </span>
+                            {ach.unlocked && (
+                              <span className="px-2 py-0.5 rounded-full bg-accent-gold/20 text-accent-gold text-[9px] font-black shrink-0">
+                                Unlocked
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-text-secondary leading-tight block truncate">
+                            {ach.description || ach.desc}
+                          </span>
+                        </div>
                       </div>
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-xs text-white block">{ach.title}</span>
-                        <span className="text-[10px] text-[#a0a0b8] leading-tight block">{ach.desc}</span>
+                      <div className="shrink-0 text-right">
+                        {ach.unlocked ? (
+                          <span className="text-xs font-black text-accent-gold">+{ach.xpReward} XP</span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-text-muted flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg border border-white/10">
+                            🔒 Locked
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2226,6 +2200,80 @@ export default function ProfileTab({
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* TAB: Achievements */}
+        {activeSubTab === 'achievements' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-heading font-extrabold text-2xl text-white">Achievements</h3>
+                <p className="text-text-secondary text-sm mt-1">Unlock badges by completing challenges and reaching milestones</p>
+              </div>
+              <div className="flex items-center gap-3 text-right">
+                <div>
+                  <span className="font-heading font-extrabold text-2xl text-accent-gold">{achievementsContext.filter(a => a.unlocked).length}</span>
+                  <span className="text-text-muted text-xs ml-1">/ {achievementsContext.length}</span>
+                </div>
+                <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+                <div className="text-right">
+                  <span className="font-heading font-extrabold text-2xl text-accent-purple">{gamificationContext.xp.toLocaleString()}</span>
+                  <span className="text-text-muted text-xs ml-1">Total XP</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {achievementsContext.map((achievement) => (
+                <div 
+                  key={achievement.id}
+                  className={`glass-card p-5 relative overflow-hidden transition-all duration-300 ${
+                    achievement.unlocked 
+                      ? 'achievement-card-unlocked border-accent-gold/40 bg-gradient-to-br from-accent-gold/10 via-transparent to-accent-amber/10 shadow-md' 
+                      : 'achievement-card-locked border-white/10 bg-white/5'
+                  }`}
+                >
+                  {achievement.unlocked ? (
+                    <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-accent-gold flex items-center justify-center shadow-md">
+                      <CheckCircle className="w-4 h-4 text-[#0a0a0f] stroke-[3px]" />
+                    </div>
+                  ) : (
+                    <div className="absolute top-3 right-3 text-[10px] font-bold text-text-muted flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">
+                      <Lock className="w-3 h-3" /> Locked
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
+                      achievement.unlocked 
+                        ? 'bg-gradient-to-br from-accent-gold to-accent-amber text-[#0a0a0f] shadow-md shadow-accent-gold/30' 
+                        : 'bg-white/10 text-text-muted border border-white/10'
+                    }`}>
+                      {achievement.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`font-heading font-extrabold text-sm ${achievement.unlocked ? 'text-white' : 'text-text-secondary'}`}>
+                        {achievement.name}
+                      </h4>
+                      <p className={`text-[11px] mt-1 ${achievement.unlocked ? 'text-text-secondary' : 'text-text-muted'}`}>
+                        {achievement.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${achievement.unlocked ? 'bg-accent-gold/20 text-accent-gold' : 'bg-white/10 text-text-muted'}`}>
+                          {achievement.category.toUpperCase()}
+                        </span>
+                        {achievement.unlocked && (
+                          <span className="px-2 py-0.5 rounded-full bg-accent-gold/20 text-accent-gold text-[9px] font-black">
+                            +{achievement.xpReward} XP
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

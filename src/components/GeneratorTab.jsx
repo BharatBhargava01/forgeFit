@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X, Plus, Search, GripVertical, Dumbbell } from 'lucide-react';
+import { Zap, Brain, Play, Save, RotateCcw, Check, Flame, Trash2, X, Plus, Search, GripVertical, Dumbbell, Shield, Heart, Bolt, Target } from 'lucide-react';
 import { getAllExercises, MUSCLE_GROUPS, EQUIPMENT } from '@/lib/data';
 import { generateWorkout } from '@/lib/generator';
 import { saveWorkout } from '@/lib/storage';
+import { useGamification } from '@/context/GamificationContext';
 
 export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorkout, clearPrefill, prefilledMuscles, clearPrefilledMuscles, user, onSignInClick }) {
+  const { gamification, levelProgress } = useGamification();
   const [selectedMuscles, setSelectedMuscles] = useState([]);
   const [mounted, setMounted] = useState(false);
 
@@ -445,20 +447,6 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
     }
   };
 
-  const getDifficultyBadge = (diff) => {
-    const map = {
-      1: 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20',
-      2: 'bg-accent-amber/10 text-accent-amber border-accent-amber/20',
-      3: 'bg-accent-rose/10 text-accent-rose border-accent-rose/20',
-    };
-    const label = difficultyLabels[diff] || 'Medium';
-    return (
-      <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${map[diff] || map[2]}`}>
-        {label}
-      </span>
-    );
-  };
-
   return (
     <>
       {/* Main Layout */}
@@ -816,7 +804,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
             </div>
           ) : workoutResult ? (
             /* Result Presentation */
-            <div className="glass-card rounded-2xl p-6 space-y-6 shadow-xl animate-fade-in">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 space-y-6 shadow-xl animate-fade-in max-w-full overflow-hidden">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-white/5">
                 <div>
                   <h3 className="font-heading font-extrabold text-2xl text-white">
@@ -866,7 +854,7 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
               </div>
 
               {/* Exercises List */}
-              <div className="space-y-3">
+              <div className="space-y-4 max-w-full">
                 {workoutResult.exercises.map((ex, i) => (
                   <div
                     key={ex.id || i}
@@ -880,100 +868,137 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                     }}
                     onDragOver={(e) => handleDragOver(e, i)}
                     onDrop={(e) => handleDrop(e, i)}
-                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-white/3 border gap-4 hover:border-white/10 transition-all cursor-move ${
-                      draggedIndex === i ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5' : 'border-white/5'
+                    className={`group relative bg-[#12121a] hover:bg-[#161624] border border-white/10 hover:border-accent-purple/40 rounded-2xl p-4 sm:p-5 transition-all duration-200 shadow-md hover:shadow-xl space-y-4 max-w-full overflow-hidden ${
+                      draggedIndex === i ? 'opacity-40 border-dashed border-accent-purple bg-accent-purple/5' : ''
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex items-center gap-1.5 self-center">
-                        <GripVertical className="w-4 h-4 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing shrink-0" />
-                        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-text-secondary border border-white/5 shrink-0">
-                          {i + 1}
+                    {/* Top Row: Exercise Number + Name + Badges + Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Drag & Number */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <GripVertical className="w-4 h-4 text-text-muted hover:text-white transition-colors cursor-grab active:cursor-grabbing" />
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white font-black text-xs shadow-md shadow-accent-purple/20">
+                            {i + 1}
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="font-bold text-white text-base block">{ex.name}</span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {ex.muscles.map(m => (
-                            <span key={m} className="px-1.5 py-0.5 rounded-md bg-white/5 text-[10px] text-text-secondary border border-white/5">
-                              {m}
+
+                        {/* Exercise Title & Type Badges */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-heading font-extrabold text-base sm:text-lg text-white truncate max-w-full">
+                              {ex.name}
+                            </h4>
+                            {ex.type === 'compound' && (
+                              <span className="px-2 py-0.5 rounded-full bg-accent-amber/15 text-accent-amber text-[9px] font-black border border-accent-amber/30 uppercase tracking-wider">
+                                Compound
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 rounded-full bg-white/5 text-text-secondary text-[9px] font-extrabold border border-white/10 uppercase tracking-wider">
+                              {ex.difficulty === 1 ? 'Beginner' : ex.difficulty === 2 ? 'Intermediate' : 'Advanced'}
                             </span>
-                          ))}
-                          <span className="text-[10px] text-text-muted">
-                            · {ex.equipment} · {ex.type}
-                          </span>
-                        </div>
-                        {ex.description && (
-                          <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                            {ex.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Prescriptions & Actions */}
-                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-between sm:justify-start border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 shrink-0">
-                      
-                      {/* Prescriptions Inputs */}
-                      <div className="flex gap-3 justify-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Sets</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={ex.sets}
-                            onChange={(e) => handleUpdateExerciseField(i, 'sets', parseInt(e.target.value) || 1)}
-                            className="w-11 text-center bg-black/40 border border-white/10 focus:border-accent-purple rounded px-1.5 py-1 text-white font-heading font-black text-sm outline-none transition-colors"
-                          />
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Reps</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="50"
-                            value={ex.reps}
-                            onChange={(e) => handleUpdateExerciseField(i, 'reps', parseInt(e.target.value) || 1)}
-                            className="w-11 text-center bg-black/40 border border-white/10 focus:border-accent-purple rounded px-1.5 py-1 text-white font-heading font-black text-sm outline-none transition-colors"
-                          />
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-1">Rest</span>
-                          <div className="flex items-center bg-black/40 border border-white/10 focus-within:border-accent-purple rounded px-1.5 py-1 transition-colors">
-                            <input
-                              type="number"
-                              min="10"
-                              step="5"
-                              value={ex.rest}
-                              onChange={(e) => handleUpdateExerciseField(i, 'rest', parseInt(e.target.value) || 30)}
-                              className="w-11 text-center bg-transparent border-none text-white font-heading font-black text-sm outline-none"
-                            />
-                            <span className="text-[10px] text-text-muted ml-0.5">s</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Swap and Delete Buttons */}
-                      <div className="flex items-center gap-1.5 border-l border-white/5 pl-3 self-stretch sm:self-auto justify-end">
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
                         <button
                           onClick={() => setSwapIndex(i)}
-                          className="p-2 rounded-lg bg-white/5 text-text-secondary hover:bg-accent-indigo/10 hover:text-accent-indigo border border-white/5 transition-all cursor-pointer"
-                          title="Swap Exercise"
+                          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-accent-indigo/20 text-text-secondary hover:text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Swap with alternative exercise"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Swap</span>
                         </button>
                         <button
                           onClick={() => handleDeleteExercise(i)}
-                          className="p-2 rounded-lg bg-white/5 text-text-secondary hover:bg-accent-rose/10 hover:text-accent-rose border border-white/5 transition-all cursor-pointer"
-                          title="Delete Exercise"
+                          className="p-1.5 rounded-xl bg-white/5 hover:bg-accent-rose/20 text-text-muted hover:text-accent-rose border border-white/10 transition-all cursor-pointer"
+                          title="Remove Exercise"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                    </div>
 
-                      <div className="pl-2 border-l border-white/5 hidden sm:block">
-                        {getDifficultyBadge(ex.difficulty)}
+                    {/* Muscle Targets & Details */}
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ex.muscles?.map(m => (
+                          <span key={m} className="px-2.5 py-0.5 rounded-lg bg-accent-purple/10 text-[10px] text-accent-purple border border-accent-purple/20 font-bold flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            {m}
+                          </span>
+                        ))}
+                        <span className="text-[10px] text-text-muted font-medium flex items-center gap-1">
+                          <Dumbbell className="w-3 h-3" />
+                          {ex.equipment}
+                        </span>
+                      </div>
+                      {ex.description && (
+                        <p className="text-xs text-text-secondary italic leading-relaxed line-clamp-2">
+                          {ex.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Bottom Controls Panel: Sets / Reps / Rest Steppers + Volume */}
+                    <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white/2 p-3 rounded-xl">
+                      {/* Steppers Grid */}
+                      <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 flex-wrap">
+                        {/* Sets */}
+                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5">
+                          <span className="text-[10px] text-text-muted uppercase font-black">Sets</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseField(i, 'sets', Math.max(1, (ex.sets || 1) - 1))}
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                          >-</button>
+                          <span className="font-heading font-black text-sm text-white w-5 text-center">{ex.sets}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseField(i, 'sets', Math.min(10, (ex.sets || 1) + 1))}
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                          >+</button>
+                        </div>
+
+                        {/* Reps */}
+                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5">
+                          <span className="text-[10px] text-text-muted uppercase font-black">Reps</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseField(i, 'reps', Math.max(1, (ex.reps || 1) - 1))}
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                          >-</button>
+                          <span className="font-heading font-black text-sm text-white w-6 text-center">{ex.reps}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseField(i, 'reps', Math.min(50, (ex.reps || 1) + 1))}
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                          >+</button>
+                        </div>
+
+                        {/* Rest */}
+                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5">
+                          <span className="text-[10px] text-text-muted uppercase font-black">Rest</span>
+                          <input
+                            type="number"
+                            min="10"
+                            step="5"
+                            value={ex.rest}
+                            onChange={(e) => handleUpdateExerciseField(i, 'rest', parseInt(e.target.value) || 30)}
+                            className="w-10 text-center bg-transparent border-none text-white font-heading font-black text-sm outline-none"
+                          />
+                          <span className="text-[10px] text-text-muted">s</span>
+                        </div>
+                      </div>
+
+                      {/* Volume Preview */}
+                      <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-accent-emerald/10 border border-accent-emerald/20 rounded-xl shrink-0">
+                        <Bolt className="w-3.5 h-3.5 text-accent-emerald" />
+                        <span className="font-heading font-extrabold text-xs text-accent-emerald">
+                          ~{((ex.sets || 3) * (ex.reps || 10) * (ex.difficulty || 2) * 5).toLocaleString()} vol
+                        </span>
                       </div>
                     </div>
                   </div>

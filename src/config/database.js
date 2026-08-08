@@ -23,8 +23,8 @@ const pool = new Pool({
       }),
 });
 
-pool.on('error', (err) => {
-  console.error('❌ Unexpected PostgreSQL error:', err);
+pool.on('error', (err, client) => {
+  console.error('⚠️ Idle PostgreSQL client error (non-fatal):', err.message || err);
 });
 
 /**

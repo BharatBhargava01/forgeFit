@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Zap, Activity, Percent, Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Apple, Utensils, Play, RotateCcw, AlertCircle, X } from 'lucide-react';
+import { Zap, Activity, Percent, Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Apple, Utensils, Play, RotateCcw, AlertCircle, X, Trophy, Target, Medal } from 'lucide-react';
 import { getWorkoutLogs, getRoutines } from '@/lib/storage';
 import AddWorkoutModal from './AddWorkoutModal';
+import { useGamification } from '@/context/GamificationContext';
 
 export default function DashboardTab({ user, showToast, onPrefillGenerator, currentFilter = 'Today', selectedDate = new Date(), onNavigate, onStartWorkout, onSetPlannerTab }) {
+  const { gamification, levelProgress } = useGamification();
   const [logs, setLogs] = useState([]);
   const [routines, setRoutines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -958,62 +960,69 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
         </div>
       </div>
 
-      {/* 2. Top KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        
-        {/* Total Sessions */}
-        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple shrink-0">
-            <Flame className="w-5 h-5 fill-accent-purple" />
-          </div>
-          <div className="text-left">
-            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Sessions Completed</span>
-            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
-              {metrics?.totalWorkouts || 0}
-            </span>
+      {/* Gamified Profile Header */}
+      {user && (
+        <div className="glass-card-hover glass-card p-6 space-y-6 animate-slide-up">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-gold to-accent-amber flex items-center justify-center text-[#0a0a0f] font-black text-2xl shadow-xl shadow-accent-gold/30">
+                  {gamification.level}
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white font-black text-xs border-4 border-[#0a0a0f] shadow-lg">
+                  <Trophy className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-extrabold text-xl text-white">Level {gamification.level}</h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-accent-gold/15 text-accent-gold border border-accent-gold/30 text-xs font-black">
+                    {levelProgress.levelTitle}
+                  </span>
+                </div>
+                <p className="text-text-secondary text-sm mt-0.5">{gamification.xp.toLocaleString()} total XP earned · <span className="italic text-text-muted">{levelProgress.levelTitleDesc}</span></p>
+              </div>
+            </div>
+            
+            <div className="flex-1 max-w-md">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-heading font-bold text-sm text-white">Progress to Level {gamification.level + 1}</span>
+                <span className="font-bold text-accent-gold text-sm">{levelProgress.progressPercent.toFixed(0)}%</span>
+              </div>
+              <div className="xp-bar h-3 rounded-full overflow-hidden bg-white/5">
+                <div 
+                  className="h-full bg-gradient-to-r from-accent-purple to-accent-cyan rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${levelProgress.progressPercent}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-text-muted mt-1">
+                <span>{levelProgress.xpInCurrentLevel.toLocaleString()} / {levelProgress.xpNeededForNext.toLocaleString()} XP</span>
+                <span>Next level at {levelProgress.xpForNextLevel.toLocaleString()} XP</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6 text-center sm:text-left">
+              <div className="flex flex-col items-center">
+                <span className="streak-flame text-4xl mb-1">🔥</span>
+                <span className="font-heading font-extrabold text-2xl text-white">{gamification.streak}</span>
+                <span className="text-[10px] text-text-muted uppercase tracking-wider">Day Streak</span>
+              </div>
+              <div className="w-px h-12 bg-white/10 hidden sm:block"></div>
+              <div className="flex flex-col items-center">
+                <Target className="w-6 h-6 text-accent-rose mb-1" />
+                <span className="font-heading font-extrabold text-2xl text-white">{gamification.totalWorkouts}</span>
+                <span className="text-[10px] text-text-muted uppercase tracking-wider">Total Workouts</span>
+              </div>
+              <div className="w-px h-12 bg-white/10 hidden sm:block"></div>
+              <div className="flex flex-col items-center">
+                <Medal className="w-6 h-6 text-accent-amber mb-1" />
+                <span className="font-heading font-extrabold text-2xl text-white">{gamification.longestStreak}</span>
+                <span className="text-[10px] text-text-muted uppercase tracking-wider">Best Streak</span>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Total Active Duration */}
-        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="text-left">
-            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Active Duration</span>
-            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
-              {formatDuration(metrics?.totalDurationSeconds || 0)}
-            </span>
-          </div>
-        </div>
-
-        {/* Total Volume */}
-        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-indigo/10 border border-accent-indigo/20 flex items-center justify-center text-accent-indigo shrink-0">
-            <Dumbbell className="w-5 h-5" />
-          </div>
-          <div className="text-left">
-            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Volume Lifted</span>
-            <span className="font-heading font-black text-xl sm:text-2xl text-[#ededed] block mt-0.5">
-              {(metrics?.totalVolumeLifted || 0).toLocaleString()} kg
-            </span>
-          </div>
-        </div>
-
-        {/* Consistency */}
-        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center text-accent-amber shrink-0">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div className="text-left">
-            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Consistency (7d)</span>
-            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
-              {metrics?.workoutsPast7Days || 0}
-            </span>
-          </div>
-        </div>
-
-      </div>
+      )}
 
       {/* Today's Workout or Rest Day from Active Routine */}
       {routines.length > 0 && todaysWorkout && !todaysWorkout.isRest && (
@@ -1168,6 +1177,63 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
           </button>
         </div>
       )}
+
+      {/* 2. Top KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        
+        {/* Total Sessions */}
+        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple shrink-0">
+            <Flame className="w-5 h-5 fill-accent-purple" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Sessions Completed</span>
+            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
+              {metrics?.totalWorkouts || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Total Active Duration */}
+        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Active Duration</span>
+            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
+              {formatDuration(metrics?.totalDurationSeconds || 0)}
+            </span>
+          </div>
+        </div>
+
+        {/* Total Volume */}
+        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-accent-indigo/10 border border-accent-indigo/20 flex items-center justify-center text-accent-indigo shrink-0">
+            <Dumbbell className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Volume Lifted</span>
+            <span className="font-heading font-black text-xl sm:text-2xl text-[#ededed] block mt-0.5">
+              {(metrics?.totalVolumeLifted || 0).toLocaleString()} kg
+            </span>
+          </div>
+        </div>
+
+        {/* Consistency */}
+        <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center text-accent-amber shrink-0">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Consistency (7d)</span>
+            <span className="font-heading font-black text-2xl text-[#ededed] block mt-0.5">
+              {metrics?.workoutsPast7Days || 0}
+            </span>
+          </div>
+        </div>
+
+      </div>
 
       {/* 3. Section 1 Layout: Energy Burn (Left) & Nutrition Intake (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">

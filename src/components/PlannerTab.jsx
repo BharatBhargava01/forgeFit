@@ -10,20 +10,33 @@ export default function PlannerTab({
   showToast,
   prefilledWorkout,
   clearPrefillWorkout,
+  clearPrefill,
   prefilledMuscles,
   clearPrefilledMuscles,
   prefilledRoutine,
   clearPrefillRoutine,
+  clearPrefilledRoutine,
   setPrefilledWorkout,
   plannerTab,
+  activePlannerTab,
   setPlannerTab
 }) {
+  const currentTab = activePlannerTab || plannerTab || 'workout';
+  const handleClearPrefillWorkout = clearPrefillWorkout || clearPrefill;
+  const handleClearPrefillRoutine = clearPrefillRoutine || clearPrefilledRoutine;
+
+  const handleSetPlannerTab = (tab) => {
+    if (typeof setPlannerTab === 'function') {
+      setPlannerTab(tab);
+    }
+  };
+
   // Sync prefilled objects to switch modes automatically
   useEffect(() => {
     if (prefilledRoutine) {
-      setPlannerTab('routine');
+      handleSetPlannerTab('routine');
     } else if (prefilledWorkout || prefilledMuscles) {
-      setPlannerTab('workout');
+      handleSetPlannerTab('workout');
     }
   }, [prefilledRoutine, prefilledWorkout, prefilledMuscles, setPlannerTab]);
 
@@ -43,9 +56,9 @@ export default function PlannerTab({
         {/* Unified Mode Toggle */}
         <div className="flex bg-white/5 border border-white/5 rounded-2xl p-1 shrink-0 self-start md:self-auto shadow-inner">
           <button
-            onClick={() => setPlannerTab('workout')}
+            onClick={() => handleSetPlannerTab('workout')}
             className={`px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
-              plannerTab === 'workout'
+              currentTab === 'workout'
                 ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-md font-bold'
                 : 'text-text-secondary hover:text-white hover:bg-white/3'
             }`}
@@ -54,9 +67,9 @@ export default function PlannerTab({
             Workout Generator
           </button>
           <button
-            onClick={() => setPlannerTab('routine')}
+            onClick={() => handleSetPlannerTab('routine')}
             className={`px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
-              plannerTab === 'routine'
+              currentTab === 'routine'
                 ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-md font-bold'
                 : 'text-text-secondary hover:text-white hover:bg-white/3'
             }`}
@@ -69,14 +82,14 @@ export default function PlannerTab({
 
       {/* Switch panels */}
       <div className="animate-fade-in">
-        {plannerTab === 'workout' ? (
+        {currentTab === 'workout' ? (
           <GeneratorTab
             onStartWorkout={onStartWorkout}
             showToast={showToast}
             user={user}
             onSignInClick={onSignInClick}
             prefilledWorkout={prefilledWorkout}
-            clearPrefill={clearPrefillWorkout}
+            clearPrefill={handleClearPrefillWorkout}
             prefilledMuscles={prefilledMuscles}
             clearPrefilledMuscles={clearPrefilledMuscles}
           />
@@ -86,12 +99,12 @@ export default function PlannerTab({
             user={user}
             onSignInClick={onSignInClick}
             prefilledRoutine={prefilledRoutine}
-            clearPrefill={clearPrefillRoutine}
+            clearPrefill={handleClearPrefillRoutine}
             onStartWorkout={onStartWorkout}
             onSendToGenerator={(workout) => {
-              setPrefilledWorkout(workout);
-              setPlannerTab('workout');
-              showToast('Day loaded into Single Workout Generator! 🏋️‍♂️', 'success');
+              if (setPrefilledWorkout) setPrefilledWorkout(workout);
+              handleSetPlannerTab('workout');
+              if (showToast) showToast('Day loaded into Single Workout Generator! 🏋️‍♂️', 'success');
             }}
           />
         )}
