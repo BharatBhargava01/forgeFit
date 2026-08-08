@@ -411,29 +411,29 @@ export function GamificationProvider({ children }) {
 
     computedXp += Math.min(300, longestStreak * 15);
 
-    const updatedAchievements = DEFAULT_ACHIEVEMENTS.map(ach => {
-      let unlocked = false;
-      switch (ach.id) {
-        case 'first_workout': unlocked = parsedLogs.length >= 1; break;
-        case 'week_warrior': unlocked = longestStreak >= 7; break;
-        case 'month_master': unlocked = longestStreak >= 30; break;
-        case 'centurion': unlocked = parsedLogs.length >= 100; break;
-        case 'heavy_lifter': unlocked = totalVolume >= 10000; break;
-        case 'early_bird': unlocked = earlyWorkouts >= 10; break;
-        case 'night_owl': unlocked = lateWorkouts >= 10; break;
-        case 'variety_king': unlocked = exerciseVariety.size >= 50; break;
-        case 'pr_hunter': unlocked = Object.keys(personalRecords).length >= 10; break;
-        case 'social_butterfly': unlocked = (gamification.sharedWorkouts || 0) >= 5; break;
-        default: unlocked = ach.unlocked || false; break;
-      }
-      return { ...ach, unlocked };
-    });
-
-    const achievementXp = updatedAchievements.reduce((sum, a) => sum + (a.unlocked ? a.xpReward : 0), 0);
-    const finalXp = computedXp + achievementXp;
-    const finalLevel = calculateLevel(finalXp);
-
     setGamification(prev => {
+      const updatedAchievements = DEFAULT_ACHIEVEMENTS.map(ach => {
+        let unlocked = false;
+        switch (ach.id) {
+          case 'first_workout': unlocked = parsedLogs.length >= 1; break;
+          case 'week_warrior': unlocked = longestStreak >= 7; break;
+          case 'month_master': unlocked = longestStreak >= 30; break;
+          case 'centurion': unlocked = parsedLogs.length >= 100; break;
+          case 'heavy_lifter': unlocked = totalVolume >= 10000; break;
+          case 'early_bird': unlocked = earlyWorkouts >= 10; break;
+          case 'night_owl': unlocked = lateWorkouts >= 10; break;
+          case 'variety_king': unlocked = exerciseVariety.size >= 50; break;
+          case 'pr_hunter': unlocked = Object.keys(personalRecords).length >= 10; break;
+          case 'social_butterfly': unlocked = (prev.sharedWorkouts || 0) >= 5; break;
+          default: unlocked = ach.unlocked || false; break;
+        }
+        return { ...ach, unlocked };
+      });
+
+      const achievementXp = updatedAchievements.reduce((sum, a) => sum + (a.unlocked ? a.xpReward : 0), 0);
+      const finalXp = computedXp + achievementXp;
+      const finalLevel = calculateLevel(finalXp);
+
       const newGamificationData = {
         ...prev,
         xp: finalXp,
@@ -449,13 +449,16 @@ export function GamificationProvider({ children }) {
         earlyWorkouts,
         lateWorkouts,
       };
-      saveGamification(newGamificationData);
+
+      setTimeout(() => {
+        saveGamification(newGamificationData);
+        setAchievements(updatedAchievements);
+        saveAchievements(updatedAchievements);
+      }, 0);
+
       return newGamificationData;
     });
-
-    setAchievements(updatedAchievements);
-    saveAchievements(updatedAchievements);
-  }, [gamification, saveGamification, saveAchievements]);
+  }, [saveGamification, saveAchievements]);
 
   const dismissLevelUp = useCallback(() => {
     setShowLevelUp(false);

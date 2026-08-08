@@ -94,6 +94,65 @@
   box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
 }
 
+/* Unified Gradient Squircle Icon Badges (matching Dashboard level/streak aesthetics) */
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.icon-badge-gold {
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  color: #0a0a0f;
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.35);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+.icon-badge-purple {
+  background: linear-gradient(135deg, #a389f4, #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.35);
+  border: 1px solid rgba(163, 137, 244, 0.4);
+}
+
+.icon-badge-indigo {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.icon-badge-cyan {
+  background: linear-gradient(135deg, #06b6d4, #0284c7);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(6, 182, 212, 0.35);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+.icon-badge-rose {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(244, 63, 94, 0.35);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.icon-badge-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.icon-badge-amber {
+  background: linear-gradient(135deg, #ff6b35, #ea580c);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.35);
+  border: 1px solid rgba(255, 107, 53, 0.4);
+}
+
 .glass-card {
   background: rgba(18, 18, 26, 0.8);
   backdrop-filter: blur(20px);

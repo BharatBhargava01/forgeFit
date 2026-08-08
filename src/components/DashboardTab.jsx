@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Zap, Activity, Percent, Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Apple, Utensils, Play, RotateCcw, AlertCircle, X, Trophy, Target, Medal } from 'lucide-react';
 import { getWorkoutLogs, getRoutines } from '@/lib/storage';
@@ -164,7 +164,7 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
   };
 
   // Fetch logged workouts and load routines
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [loggedWorkouts, savedRoutines] = await Promise.all([
         getWorkoutLogs(),
@@ -180,11 +180,11 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
     } finally {
       setLoading(false);
     }
-  };
+  }, [syncFromWorkoutLogs]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   // Generate date list for past 7 days
   const last7DaysList = useMemo(() => {
@@ -1186,8 +1186,8 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
         
         {/* Total Sessions */}
         <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center text-accent-purple shrink-0">
-            <Flame className="w-5 h-5 fill-accent-purple" />
+          <div className="icon-badge w-11 h-11 icon-badge-purple shrink-0">
+            <Flame className="w-5 h-5 fill-white text-white" />
           </div>
           <div className="text-left">
             <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Sessions Completed</span>
@@ -1199,8 +1199,8 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
         {/* Total Active Duration */}
         <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan shrink-0">
-            <Clock className="w-5 h-5" />
+          <div className="icon-badge w-11 h-11 icon-badge-cyan shrink-0">
+            <Clock className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
             <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Active Duration</span>
@@ -1212,8 +1212,8 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
         {/* Total Volume */}
         <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-indigo/10 border border-accent-indigo/20 flex items-center justify-center text-accent-indigo shrink-0">
-            <Dumbbell className="w-5 h-5" />
+          <div className="icon-badge w-11 h-11 icon-badge-indigo shrink-0">
+            <Dumbbell className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
             <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Volume Lifted</span>
@@ -1225,8 +1225,8 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
         {/* Consistency */}
         <div className="bg-[#12121a] rounded-[2rem] p-5 shadow-sm border border-white/10 text-white flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center text-accent-amber shrink-0">
-            <Calendar className="w-5 h-5" />
+          <div className="icon-badge w-11 h-11 icon-badge-amber shrink-0">
+            <Calendar className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
             <span className="text-[10px] text-text-muted font-bold tracking-wider uppercase">Consistency (7d)</span>

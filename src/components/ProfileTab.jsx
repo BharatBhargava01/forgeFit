@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle,
   Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X, Trophy, Target, Medal, Star, Lock, Unlock
@@ -224,7 +224,7 @@ export default function ProfileTab({
   const [saving, setSaving] = useState(false);
 
   // Fetch all personal data from IndexedDB / Storage layer
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     setLoadingData(true);
     try {
       const [wList, rList, lList] = await Promise.all([
@@ -239,7 +239,6 @@ export default function ProfileTab({
         syncFromWorkoutLogs(lList);
       }
 
-      // Load meal logs
       const savedMeals = localStorage.getItem('wg_meals_log');
       if (savedMeals) {
         try {
@@ -255,29 +254,11 @@ export default function ProfileTab({
     } finally {
       setLoadingData(false);
     }
-  };
-
-  const handleDeleteMealLog = (mealId, e) => {
-    if (e) e.stopPropagation();
-    if (confirm('Are you sure you want to delete this meal log?')) {
-      const saved = localStorage.getItem('wg_meals_log');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const updated = parsed.filter(m => m.id !== mealId);
-          localStorage.setItem('wg_meals_log', JSON.stringify(updated));
-          setMealLogs(updated);
-          showToast('Meal log deleted successfully.', 'success');
-        } catch (e) {
-          showToast('Failed to delete meal log.', 'error');
-        }
-      }
-    }
-  };
+  }, [syncFromWorkoutLogs]);
 
   useEffect(() => {
     fetchProfileData();
-  }, []);
+  }, [fetchProfileData]);
 
   // Pre-fill form from user profile object
   useEffect(() => {
