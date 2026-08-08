@@ -6,7 +6,7 @@ import AddWorkoutModal from './AddWorkoutModal';
 import { useGamification } from '@/context/GamificationContext';
 
 export default function DashboardTab({ user, showToast, onPrefillGenerator, currentFilter = 'Today', selectedDate = new Date(), onNavigate, onStartWorkout, onSetPlannerTab }) {
-  const { gamification, levelProgress } = useGamification();
+  const { gamification, levelProgress, syncFromWorkoutLogs } = useGamification();
   const [logs, setLogs] = useState([]);
   const [routines, setRoutines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -172,6 +172,9 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
       ]);
       setLogs(loggedWorkouts || []);
       setRoutines(savedRoutines || []);
+      if (loggedWorkouts && loggedWorkouts.length > 0 && syncFromWorkoutLogs) {
+        syncFromWorkoutLogs(loggedWorkouts);
+      }
     } catch (err) {
       console.warn('Failed to load dashboard data:', err);
     } finally {

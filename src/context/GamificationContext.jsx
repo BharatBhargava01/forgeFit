@@ -297,6 +297,166 @@ export function GamificationProvider({ children }) {
     });
   }, [saveGamification, checkAndUnlockAchievements]);
 
+  const syncFromWorkoutLogs = useCallback((logs = []) => {
+    if (!Array.isArray(logs) || logs.length === 0) return;
+
+    const parsedLogs = logs.map(l => {
+      const dStr = l.date || l.loggedAt || l.created_at || new Date().toISOString();
+      return {
+        ...l,
+        dateObj: new Date(dStr),
+      };
+    }).filter(l => !isNaN(l.dateObj.getTime())).sort((a, b) => a.dateObj - b.dateObj);
+
+    if (parsedLogs.length === 0) return;
+
+    let totalVolume = 0;
+    const exerciseVariety = new Set();
+    const personalRecords = {};
+    const workoutDatesSet = new Set();
+
+    let earlyWorkouts = 0;
+    let lateWorkouts = 0;
+
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    const uniqueDays = [];
+    const daySeen = new Set();
+
+    let computedXp = 0;
+
+    parsedLogs.forEach((log) => {
+      const dayKey = log.dateObj.toISOString().split('T')[0];
+      if (!daySeen.has(dayKey)) {
+        daySeen.add(dayKey);
+        uniqueDays.push(log.dateObj);
+      }
+      workoutDatesSet.add(log.dateObj.toDateString());
+
+      let logVolume = parseFloat(log.volume || log.totalVolume || 0);
+      if (!logVolume && Array.isArray(log.exercises)) {
+        log.exercises.forEach(ex => {
+          if (Array.isArray(ex.completedSets) && ex.completedSets.length > 0) {
+            ex.completedSets.forEach(s => {
+              logVolume += (parseFloat(s.weight || 0) * parseFloat(s.reps || 0));
+            });
+          } else if (Array.isArray(ex.sets) && ex.sets.length > 0) {
+            ex.sets.forEach(s => {
+              if (s.completed !== false) {
+                logVolume += (parseFloat(s.weight || 0) * parseFloat(s.reps || 0));
+              }
+            });
+          } else {
+            logVolume += ((parseFloat(ex.sets || 3) * parseFloat(ex.reps || 10) * (ex.difficulty || 2) * 5));
+          }
+        });
+      }
+      totalVolume += logVolume;
+
+      if (Array.isArray(log.exercises)) {
+        log.exercises.forEach(ex => {
+          if (ex.name) exerciseVariety.add(ex.name);
+          const setsList = ex.completedSets || ex.sets || [];
+          if (Array.isArray(setsList)) {
+            setsList.forEach(s => {
+              const w = parseFloat(s.weight || 0);
+              if (w > 0 && ex.name) {
+                personalRecords[ex.name] = Math.max(personalRecords[ex.name] || 0, w);
+              }
+            });
+          }
+        });
+      }
+
+      const hour = log.dateObj.getHours();
+      if (hour < 8) earlyWorkouts++;
+      if (hour >= 22) lateWorkouts++;
+
+      const baseXp = 50;
+      const volumeBonus = Math.min(100, Math.floor(logVolume / 100));
+      computedXp += (baseXp + volumeBonus);
+    });
+
+    if (uniqueDays.length > 0) {
+      let streakCount = 1;
+      longestStreak = 1;
+      for (let i = 1; i < uniqueDays.length; i++) {
+        const prevDay = new Date(uniqueDays[i - 1]);
+        prevDay.setHours(0, 0, 0, 0);
+        const currDay = new Date(uniqueDays[i]);
+        currDay.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((currDay - prevDay) / 86400000);
+
+        if (diffDays === 1) {
+          streakCount++;
+        } else if (diffDays > 1) {
+          streakCount = 1;
+        }
+        longestStreak = Math.max(longestStreak, streakCount);
+      }
+
+      const lastDay = new Date(uniqueDays[uniqueDays.length - 1]);
+      lastDay.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysSinceLast = Math.round((today - lastDay) / 86400000);
+
+      if (daysSinceLast <= 1) {
+        currentStreak = streakCount;
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    computedXp += Math.min(300, longestStreak * 15);
+
+    const updatedAchievements = DEFAULT_ACHIEVEMENTS.map(ach => {
+      let unlocked = false;
+      switch (ach.id) {
+        case 'first_workout': unlocked = parsedLogs.length >= 1; break;
+        case 'week_warrior': unlocked = longestStreak >= 7; break;
+        case 'month_master': unlocked = longestStreak >= 30; break;
+        case 'centurion': unlocked = parsedLogs.length >= 100; break;
+        case 'heavy_lifter': unlocked = totalVolume >= 10000; break;
+        case 'early_bird': unlocked = earlyWorkouts >= 10; break;
+        case 'night_owl': unlocked = lateWorkouts >= 10; break;
+        case 'variety_king': unlocked = exerciseVariety.size >= 50; break;
+        case 'pr_hunter': unlocked = Object.keys(personalRecords).length >= 10; break;
+        case 'social_butterfly': unlocked = (gamification.sharedWorkouts || 0) >= 5; break;
+        default: unlocked = ach.unlocked || false; break;
+      }
+      return { ...ach, unlocked };
+    });
+
+    const achievementXp = updatedAchievements.reduce((sum, a) => sum + (a.unlocked ? a.xpReward : 0), 0);
+    const finalXp = computedXp + achievementXp;
+    const finalLevel = calculateLevel(finalXp);
+
+    setGamification(prev => {
+      const newGamificationData = {
+        ...prev,
+        xp: finalXp,
+        level: finalLevel,
+        streak: currentStreak,
+        longestStreak,
+        lastWorkoutDate: uniqueDays.length > 0 ? uniqueDays[uniqueDays.length - 1].toDateString() : null,
+        totalWorkouts: parsedLogs.length,
+        totalVolume,
+        workoutDates: Array.from(workoutDatesSet),
+        exerciseVariety,
+        personalRecords,
+        earlyWorkouts,
+        lateWorkouts,
+      };
+      saveGamification(newGamificationData);
+      return newGamificationData;
+    });
+
+    setAchievements(updatedAchievements);
+    saveAchievements(updatedAchievements);
+  }, [gamification, saveGamification, saveAchievements]);
+
   const dismissLevelUp = useCallback(() => {
     setShowLevelUp(false);
   }, []);
@@ -321,6 +481,7 @@ export function GamificationProvider({ children }) {
       recordWorkout,
       recordPersonalRecord,
       recordSharedWorkout,
+      syncFromWorkoutLogs,
       dismissLevelUp,
       dismissAchievement,
       levelProgress: {

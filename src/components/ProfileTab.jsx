@@ -33,7 +33,7 @@ export default function ProfileTab({
   themeSetting = 'light',
   onChangeTheme
 }) {
-  const { gamification: gamificationContext, achievements: achievementsContext, levelProgress } = useGamification();
+  const { gamification: gamificationContext, achievements: achievementsContext, levelProgress, syncFromWorkoutLogs } = useGamification();
 
   // Storage data states
   const [savedWorkouts, setSavedWorkouts] = useState([]);
@@ -235,6 +235,9 @@ export default function ProfileTab({
       setSavedWorkouts(wList || []);
       setSavedRoutines(rList || []);
       setLogs(lList || []);
+      if (lList && lList.length > 0 && syncFromWorkoutLogs) {
+        syncFromWorkoutLogs(lList);
+      }
 
       // Load meal logs
       const savedMeals = localStorage.getItem('wg_meals_log');
