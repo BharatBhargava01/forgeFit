@@ -1,15 +1,84 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Zap, Activity, Percent, Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Apple, Utensils } from 'lucide-react';
-import { getWorkoutLogs } from '@/lib/storage';
+import { createPortal } from 'react-dom';
+import { Zap, Activity, Percent, Award, Brain, Calendar, Dumbbell, Flame, Sparkles, Clock, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Apple, Utensils, Play, RotateCcw, AlertCircle, X } from 'lucide-react';
+import { getWorkoutLogs, getRoutines } from '@/lib/storage';
 import AddWorkoutModal from './AddWorkoutModal';
 
-export default function DashboardTab({ user, showToast, onPrefillGenerator, currentFilter = 'Today', selectedDate = new Date(), onNavigate }) {
+export default function DashboardTab({ user, showToast, onPrefillGenerator, currentFilter = 'Today', selectedDate = new Date(), onNavigate, onStartWorkout, onSetPlannerTab }) {
   const [logs, setLogs] = useState([]);
+  const [routines, setRoutines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [hoveredGroup, setHoveredGroup] = useState(null);
   const [activePieMuscle, setActivePieMuscle] = useState(null);
+  const [showRoutineDetails, setShowRoutineDetails] = useState(false);
+  const [viewedRoutine, setViewedRoutine] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (showRoutineDetails) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showRoutineDetails]);
+
+  // Compute today's/selected day's workout from the most recent routine
+  const todaysWorkout = useMemo(() => {
+    if (!routines.length) return null;
+    
+    // Use the most recent routine (first in array since they're sorted by created_at DESC)
+    const activeRoutine = routines[0];
+    if (!activeRoutine.week || !Array.isArray(activeRoutine.week)) return null;
+    
+    // Get target date's day index (0=Monday, 6=Sunday)
+    const refDate = selectedDate ? new Date(selectedDate) : new Date();
+    let dayIndex = refDate.getDay() - 1; // Convert Sun=0 to Mon=0
+    if (dayIndex === -1) dayIndex = 6; // Sunday becomes 6
+    
+    const todaySchedule = activeRoutine.week.find(day => day.dayIndex === dayIndex);
+
+    // Check if refDate is actual today
+    const now = new Date();
+    const isToday = refDate.getFullYear() === now.getFullYear() &&
+                    refDate.getMonth() === now.getMonth() &&
+                    refDate.getDate() === now.getDate();
+
+    const formattedDateStr = refDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    if (!todaySchedule || todaySchedule.isRest) {
+      return {
+        routineName: activeRoutine.name || activeRoutine.splitName || 'Active Routine',
+        dayName: todaySchedule?.dayName || refDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        label: todaySchedule?.label || 'Rest Day',
+        muscles: [],
+        exercises: [],
+        isRest: true,
+        isToday,
+        formattedDateStr
+      };
+    }
+    
+    return {
+      routineName: activeRoutine.name || activeRoutine.splitName || 'Active Routine',
+      dayName: todaySchedule.dayName || refDate.toLocaleDateString('en-US', { weekday: 'long' }),
+      label: todaySchedule.label || 'Workout',
+      muscles: todaySchedule.muscles || [],
+      exercises: todaySchedule.exercises || [],
+      isRest: false,
+      isToday,
+      formattedDateStr
+    };
+  }, [routines, selectedDate]);
 
   // Filter logs based on top-right date selector and currentFilter
   const filteredLogs = useMemo(() => {
@@ -92,13 +161,17 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
     return `${year}-${month}-${day}`;
   };
 
-  // Fetch logged workouts and load sleep hours
+  // Fetch logged workouts and load routines
   const loadData = async () => {
     try {
-      const loggedWorkouts = await getWorkoutLogs();
+      const [loggedWorkouts, savedRoutines] = await Promise.all([
+        getWorkoutLogs(),
+        getRoutines()
+      ]);
       setLogs(loggedWorkouts || []);
+      setRoutines(savedRoutines || []);
     } catch (err) {
-      console.warn('Failed to load logs in dashboard:', err);
+      console.warn('Failed to load dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -942,6 +1015,160 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
 
       </div>
 
+      {/* Today's Workout or Rest Day from Active Routine */}
+      {routines.length > 0 && todaysWorkout && !todaysWorkout.isRest && (
+        <div className="bg-gradient-to-br from-accent-indigo/10 via-accent-purple/5 to-transparent rounded-[2rem] p-6 border border-accent-purple/20 shadow-lg animate-slide-up">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-lg shrink-0">
+                <Dumbbell className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-xl text-white">
+                  {todaysWorkout.isToday ? "Today's Workout" : `Scheduled Workout (${todaysWorkout.formattedDateStr})`}
+                </h3>
+                <p className="text-text-secondary text-xs mt-0.5">
+                  {todaysWorkout.routineName} · {todaysWorkout.dayName} ({todaysWorkout.label})
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {todaysWorkout.muscles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {todaysWorkout.muscles.map((muscle, idx) => (
+                    <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-accent-purple/10 border border-accent-purple/20 text-accent-purple">
+                      {muscle}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todaysWorkout.exercises.length > 0 ? (
+              todaysWorkout.exercises.map((ex, idx) => (
+                <div key={ex.id || idx} className="flex items-center justify-between p-3 bg-white/3 border border-white/5 rounded-xl hover:bg-white/5 transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="w-6 h-6 rounded-full bg-accent-indigo/20 border border-accent-indigo/30 flex items-center justify-center text-accent-indigo font-bold text-xs shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white truncate">{ex.name}</p>
+                      <p className="text-xs text-text-secondary flex items-center gap-2 mt-0.5">
+                        {ex.sets} sets × {ex.reps} reps
+                        {ex.rest && <span>· {ex.rest}s rest</span>}
+                        {ex.equipment && <span>· {ex.equipment}</span>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-text-secondary text-center py-4">No exercises scheduled for this day.</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+            <button
+              onClick={() => {
+                if (routines.length > 0) {
+                  setViewedRoutine(routines[0]);
+                  setShowRoutineDetails(true);
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[#ededed] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              View Routine
+            </button>
+            <button
+              onClick={() => onStartWorkout && onStartWorkout({
+                id: `routine-today-${Date.now()}`,
+                name: `${todaysWorkout.routineName} - ${todaysWorkout.label}`,
+                description: `Training day focusing on ${todaysWorkout.muscles.join(', ')}`,
+                muscles: todaysWorkout.muscles,
+                difficulty: 2,
+                duration: todaysWorkout.exercises.length * 10,
+                goal: 'hypertrophy',
+                exercises: todaysWorkout.exercises.map((ex, idx) => ({
+                  id: ex.id || `ex-${idx}-${Date.now()}`,
+                  name: ex.name,
+                  muscles: ex.muscles || [todaysWorkout.muscles[0] || 'Full Body'],
+                  equipment: ex.equipment || 'Full Gym',
+                  difficulty: ex.difficulty || 2,
+                  type: ex.type || 'compound',
+                  description: ex.description || '',
+                  sets: ex.sets || 3,
+                  reps: ex.reps || 10,
+                  rest: ex.rest || 60
+                })),
+                totalExercises: todaysWorkout.exercises.length,
+                estimatedMinutes: todaysWorkout.exercises.length * 10
+              })}
+              className="px-6 py-2 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-cyan hover:opacity-90 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-accent-emerald/20 transition-all cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              Start Workout
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rest Day Message */}
+      {routines.length > 0 && (!todaysWorkout || todaysWorkout.isRest) && (
+        <div className="bg-[#12121a] rounded-[2rem] p-6 border border-white/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 animate-slide-up">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center text-accent-amber shrink-0">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-heading font-extrabold text-xl text-white">
+                Rest Day {todaysWorkout && !todaysWorkout.isToday && `(${todaysWorkout.formattedDateStr})`}
+              </h3>
+              <p className="text-text-secondary text-xs mt-0.5">
+                Your active routine has a rest day scheduled for {todaysWorkout?.isToday ? 'today' : (todaysWorkout?.dayName || 'this day')}. Recovery is part of the process! 😴
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (routines.length > 0) {
+                setViewedRoutine(routines[0]);
+                setShowRoutineDetails(true);
+              }
+            }}
+            className="px-4 py-2 rounded-xl bg-accent-purple/10 border border-accent-purple/20 hover:bg-accent-purple/20 text-accent-purple text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4" />
+            View Routine
+          </button>
+        </div>
+      )}
+
+      {/* No Routine Message */}
+      {routines.length === 0 && user && (
+        <div className="bg-[#12121a] rounded-[2rem] p-6 border border-white/10 shadow-sm text-center animate-slide-up">
+          <div className="w-12 h-12 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan mx-auto mb-4">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <h3 className="font-heading font-extrabold text-lg text-white mb-2">No Active Routine</h3>
+          <p className="text-text-secondary text-sm mb-4 max-w-md mx-auto">
+            Create a weekly routine in the Planner to see your scheduled workout for today.
+          </p>
+          <button
+            onClick={() => {
+              onNavigate && onNavigate('planner');
+              onSetPlannerTab && onSetPlannerTab('routine');
+            }}
+            className="px-6 py-2 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-extrabold text-xs flex items-center gap-1.5 mx-auto shadow-lg shadow-accent-purple/20 transition-all cursor-pointer"
+          >
+            <Calendar className="w-4 h-4" />
+            Build My Routine
+          </button>
+        </div>
+      )}
+
       {/* 3. Section 1 Layout: Energy Burn (Left) & Nutrition Intake (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
@@ -1763,6 +1990,167 @@ export default function DashboardTab({ user, showToast, onPrefillGenerator, curr
           </div>
         )}
       </div>
+
+      {/* Routine Details Modal */}
+      {mounted && showRoutineDetails && viewedRoutine && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#12121a] border border-white/10 rounded-[2rem] max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-scale-up">
+            {/* Header */}
+            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white font-bold shadow">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-xl text-white">
+                    {viewedRoutine.name || viewedRoutine.splitName || 'Active Routine'}
+                  </h3>
+                  <p className="text-xs text-text-secondary mt-0.5 flex items-center gap-2">
+                    <span className="capitalize">{viewedRoutine.splitName || 'Custom'} Split</span>
+                    <span>·</span>
+                    <span>{viewedRoutine.daysPerWeek || 7} days/week</span>
+                    {viewedRoutine.goal && (
+                      <>
+                        <span>·</span>
+                        <span className="capitalize">{viewedRoutine.goal}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRoutineDetails(false);
+                  setViewedRoutine(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Routine Days Content */}
+            <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1">
+              {viewedRoutine.description && (
+                <p className="text-xs text-text-secondary p-3 rounded-xl bg-white/5 border border-white/5 leading-relaxed">
+                  {viewedRoutine.description}
+                </p>
+              )}
+
+              {viewedRoutine.week && Array.isArray(viewedRoutine.week) && viewedRoutine.week.length > 0 ? (
+                viewedRoutine.week.map((day, dIdx) => (
+                  <div
+                    key={day.dayIndex ?? dIdx}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      day.isRest
+                        ? 'bg-white/2 border-white/5 opacity-70'
+                        : 'bg-white/4 border-white/10 hover:border-accent-purple/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                          day.isRest ? 'bg-white/5 text-text-secondary' : 'bg-accent-purple/20 text-accent-purple border border-accent-purple/30'
+                        }`}>
+                          {day.dayName ? day.dayName.substring(0, 3) : `D${dIdx + 1}`}
+                        </span>
+                        <div>
+                          <h4 className="font-heading font-extrabold text-sm text-white flex items-center gap-2">
+                            {day.dayName || `Day ${dIdx + 1}`} — {day.label || (day.isRest ? 'Rest Day' : 'Workout')}
+                          </h4>
+                          {day.muscles && day.muscles.length > 0 && !day.isRest && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {day.muscles.map((m, mIdx) => (
+                                <span key={mIdx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-accent-purple/10 text-accent-purple border border-accent-purple/20">
+                                  {m}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {!day.isRest && day.exercises && day.exercises.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setShowRoutineDetails(false);
+                            setViewedRoutine(null);
+                            if (onStartWorkout) {
+                              onStartWorkout({
+                                id: `routine-day-${Date.now()}`,
+                                name: `${viewedRoutine.name || 'Routine'} - ${day.label || day.dayName}`,
+                                description: `Training day targeting ${day.muscles?.join(', ') || 'Muscles'}`,
+                                muscles: day.muscles || [],
+                                difficulty: 2,
+                                duration: day.exercises.length * 10,
+                                goal: viewedRoutine.goal || 'hypertrophy',
+                                exercises: day.exercises.map((ex, idx) => ({
+                                  id: ex.id || `ex-${idx}-${Date.now()}`,
+                                  name: ex.name,
+                                  muscles: ex.muscles || [day.muscles?.[0] || 'Full Body'],
+                                  equipment: ex.equipment || 'Full Gym',
+                                  difficulty: ex.difficulty || 2,
+                                  type: ex.type || 'compound',
+                                  description: ex.description || '',
+                                  sets: ex.sets || 3,
+                                  reps: ex.reps || 10,
+                                  rest: ex.rest || 60
+                                })),
+                                totalExercises: day.exercises.length,
+                                estimatedMinutes: day.exercises.length * 10
+                              });
+                            }
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-accent-emerald to-accent-cyan text-white text-xs font-bold flex items-center gap-1 hover:opacity-90 transition-all shadow-sm cursor-pointer shrink-0"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          Start Day
+                        </button>
+                      )}
+                    </div>
+
+                    {day.isRest ? (
+                      <p className="text-xs text-text-secondary italic">Rest & Muscle Recovery Day 😴</p>
+                    ) : day.exercises && day.exercises.length > 0 ? (
+                      <div className="space-y-2 mt-2">
+                        {day.exercises.map((ex, exIdx) => (
+                          <div key={ex.id || exIdx} className="flex items-center justify-between p-2.5 bg-black/20 rounded-xl border border-white/5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-text-secondary font-mono text-[10px]">{exIdx + 1}.</span>
+                              <span className="font-semibold text-white">{ex.name}</span>
+                            </div>
+                            <span className="text-text-secondary text-[11px]">
+                              {ex.sets || 3} sets × {ex.reps || 10} reps {ex.rest ? `(${ex.rest}s rest)` : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-text-secondary italic">No exercises added for this day.</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-text-secondary text-xs">No day schedule found for this routine.</div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 bg-white/3 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowRoutineDetails(false);
+                  setViewedRoutine(null);
+                }}
+                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Edit Log Modal */}
       <AddWorkoutModal

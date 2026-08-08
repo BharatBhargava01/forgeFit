@@ -1155,6 +1155,8 @@ export default function MainPage() {
                 currentFilter={currentFilter}
                 selectedDate={selectedDate}
                 onNavigate={setCurrentPage}
+                onStartWorkout={handleStartWorkout}
+                onSetPlannerTab={setPlannerTab}
               />
             )}
 
