@@ -4,7 +4,19 @@ import { Timer, Dumbbell, Check, Plus, Trash2, X, AlertTriangle, Play, Pause, Se
 import { saveWorkoutLog, getCustomExercises, saveCustomExercise } from '@/lib/storage';
 import { EXERCISES } from '@/lib/data';
 
-export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, showToast }) {
+export default function TrackerTab({
+  workout,
+  activeWorkout,
+  onCancelWorkout,
+  onCancel,
+  onFinishWorkout,
+  onFinish,
+  showToast
+}) {
+  const currentWorkout = workout || activeWorkout;
+  const handleFinishCb = onFinishWorkout || onFinish;
+  const handleCancelCb = onCancelWorkout || onCancel;
+
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [mounted, setMounted] = useState(false);
 
@@ -72,8 +84,8 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       }
     }
 
-    if (workout && workout.exercises) {
-      const formatted = workout.exercises.map((ex, idx) => {
+    if (currentWorkout && currentWorkout.exercises) {
+      const formatted = currentWorkout.exercises.map((ex, idx) => {
         // Create initial sets
         const setsArray = [];
         const count = ex.sets || 3;
@@ -100,7 +112,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       setIsPaused(false);
     }
     setIsInitialized(true);
-  }, [workout]);
+  }, [currentWorkout]);
 
   // Main session timer effect
   useEffect(() => {
@@ -126,9 +138,9 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
   useEffect(() => {
     if (!isInitialized) return;
     
-    if (workout && loggedExercises.length > 0) {
+    if (currentWorkout && loggedExercises.length > 0) {
       const sessionData = {
-        workout,
+        workout: currentWorkout,
         elapsedSeconds,
         loggedExercises,
         isPaused,
@@ -136,7 +148,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       };
       localStorage.setItem('wg_active_session', JSON.stringify(sessionData));
     }
-  }, [workout, elapsedSeconds, loggedExercises, isPaused, isInitialized]);
+  }, [currentWorkout, elapsedSeconds, loggedExercises, isPaused, isInitialized]);
 
   // Rest countdown timer effect
   useEffect(() => {
@@ -359,7 +371,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
     }
 
     const payload = {
-      name: workout.name || 'Custom Workout Session',
+      name: currentWorkout?.name || 'Custom Workout Session',
       durationSeconds: elapsedSeconds,
       date: new Date().toISOString(),
       exercises: loggedExercises.map(ex => ({
@@ -386,7 +398,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       // Clear saved session from localStorage
       localStorage.removeItem('wg_active_session');
       
-      onFinishWorkout();
+      if (handleFinishCb) handleFinishCb();
     } catch (err) {
       showToast('Failed to log workout session', 'error');
     }
@@ -398,7 +410,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
       clearInterval(restTimerRef.current);
       // Clear saved session from localStorage
       localStorage.removeItem('wg_active_session');
-      onCancelWorkout();
+      if (handleCancelCb) handleCancelCb();
     }
   };
 
@@ -410,10 +422,10 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
         <div>
           <span className="text-xs text-text-muted font-bold tracking-wider uppercase">Active Session</span>
           <h3 className="font-heading font-extrabold text-2xl text-white mt-1">
-            {workout?.name || 'Workout Session'}
+            {currentWorkout?.name || 'Workout Session'}
           </h3>
           <p className="text-xs text-text-secondary mt-0.5">
-            {loggedExercises.length} Exercises · Prefill Target: {workout?.estimatedMinutes || '?'} mins
+            {loggedExercises.length} Exercises · Prefill Target: {currentWorkout?.estimatedMinutes || '?'} mins
           </p>
         </div>
         <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
@@ -464,7 +476,7 @@ export default function TrackerTab({ workout, onCancelWorkout, onFinishWorkout, 
               <div className="flex gap-2">
                 <button
                   onClick={() => handleAddRestTime(30)}
-                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[#ededed] font-semibold text-xs transition-colors cursor-pointer"
                 >
                   ➕ 30s
                 </button>

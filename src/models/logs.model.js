@@ -40,7 +40,8 @@ class LogsModel {
           ex.sets.forEach(s => {
             if (s.completed) {
               const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
-              exVolume += w;
+              const reps = parseInt(s.reps) || 0;
+              exVolume += w * reps;
             }
           });
         }
@@ -105,7 +106,8 @@ class LogsModel {
           ex.sets.forEach(s => {
             if (s.completed) {
               const w = parseFloat(s.weight) || (ex.equipment === 'Bodyweight' ? 10 : 0);
-              exVolume += w;
+              const reps = parseInt(s.reps) || 0;
+              exVolume += w * reps;
             }
           });
         }

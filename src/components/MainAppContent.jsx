@@ -1247,8 +1247,11 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
               <TrackerTab
                 user={user}
                 showToast={showToast}
+                workout={activeWorkout}
                 activeWorkout={activeWorkout}
+                onFinishWorkout={handleFinishWorkout}
                 onFinish={handleFinishWorkout}
+                onCancelWorkout={handleCancelWorkout}
                 onCancel={handleCancelWorkout}
               />
             )}
