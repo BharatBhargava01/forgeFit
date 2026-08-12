@@ -61,7 +61,14 @@ export async function DELETE() {
     }
 
     const cookieStore = await cookies();
-    cookieStore.delete('token');
+    cookieStore.set('token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      expires: new Date(0),
+      path: '/',
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Sparkles, User, Loader2, HelpCircle, X, Trash2, MessageSquare } from 'lucide-react';
 
 export default function AiChatPopup({ user, showToast }) {
+  if (!user) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {

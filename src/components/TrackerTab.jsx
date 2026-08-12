@@ -448,48 +448,54 @@ export default function TrackerTab({
         </div>
       </div>
 
-      {/* Sticky Rest Timer stuck below navbar */}
-      {restOpen && (
-        <div className="sticky top-[72px] z-40 w-full mb-6 animate-slide-down">
-          <div className="glass-card rounded-2xl p-4 border border-accent-purple/35 bg-[#12121a]/95 backdrop-blur-md shadow-xl shadow-accent-purple/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Floating Overlay Rest Timer Banner (Rendered via React Portal to document.body) */}
+      {mounted && restOpen && createPortal(
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9990] w-[calc(100%-2rem)] max-w-xl animate-slide-up pointer-events-auto">
+          <div className="glass-card rounded-2xl p-4 border border-accent-purple/50 bg-[#12121a]/95 backdrop-blur-xl shadow-2xl shadow-accent-purple/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4 w-full sm:w-auto">
-              <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center text-accent-purple shrink-0 text-xl animate-pulse">
+              <div className="w-10 h-10 rounded-xl bg-accent-purple/20 border border-accent-purple/40 flex items-center justify-center text-accent-purple shrink-0 text-xl animate-pulse">
                 ⏳
               </div>
               <div className="text-left flex-grow">
-                <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Rest Timer Active</span>
-                <div className="w-32 sm:w-48 h-1.5 rounded-full bg-white/5 overflow-hidden mt-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-accent-purple uppercase tracking-wider font-extrabold">Rest Timer Active</span>
+                  <span className="w-2 h-2 rounded-full bg-accent-purple animate-ping"></span>
+                </div>
+                <div className="w-32 sm:w-48 h-2 rounded-full bg-white/10 overflow-hidden mt-1.5 border border-white/5">
                   <div
-                    className="h-full bg-gradient-to-r from-accent-indigo to-accent-purple transition-all duration-1000 ease-linear"
+                    className="h-full bg-gradient-to-r from-accent-indigo via-accent-purple to-accent-cyan transition-all duration-1000 ease-linear"
                     style={{ width: `${(restSeconds / restTotal) * 100}%` }}
                   ></div>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-6 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
               <div className="font-heading font-black text-3xl text-white tracking-widest leading-none flex items-baseline">
                 {restSeconds}
-                <span className="text-xs text-text-secondary ml-0.5">s</span>
+                <span className="text-xs text-accent-cyan ml-0.5 font-bold">s</span>
               </div>
               
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => handleAddRestTime(30)}
-                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[#ededed] font-semibold text-xs transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs transition-all cursor-pointer shadow-sm"
                 >
-                  ➕ 30s
+                  +30s
                 </button>
                 <button
+                  type="button"
                   onClick={handleSkipRest}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-bold text-xs shadow transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple hover:opacity-90 text-white font-extrabold text-xs shadow-md shadow-accent-purple/20 transition-all cursor-pointer"
                 >
                   Skip ⏭️
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Exercises Log Grid */}

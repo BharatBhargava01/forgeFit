@@ -1269,6 +1269,9 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
               <ProfileTab
                 user={user}
                 showToast={showToast}
+                onStartWorkout={handleStartWorkout}
+                onInspectWorkout={handleInspectWorkout}
+                onInspectRoutine={handleInspectRoutine}
                 onSignOut={handleSignOut}
                 onDeleteAccount={handleDeleteAccount}
                 themeSetting={themeSetting}
@@ -1334,7 +1337,7 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
       />
 
       {/* Persistent Floating AI Chat Coach */}
-      <AiChatPopup user={user} showToast={showToast} />
+      {user && <AiChatPopup user={user} showToast={showToast} />}
     </div>
   );
 }

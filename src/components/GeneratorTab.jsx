@@ -952,13 +952,13 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                           <button
                             type="button"
                             onClick={() => handleUpdateExerciseField(i, 'sets', Math.max(1, (ex.sets || 1) - 1))}
-                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-[#ededed] flex items-center justify-center font-bold text-xs cursor-pointer"
                           >-</button>
                           <span className="font-heading font-black text-sm text-white w-5 text-center">{ex.sets}</span>
                           <button
                             type="button"
                             onClick={() => handleUpdateExerciseField(i, 'sets', Math.min(10, (ex.sets || 1) + 1))}
-                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-[#ededed] flex items-center justify-center font-bold text-xs cursor-pointer"
                           >+</button>
                         </div>
 
@@ -968,13 +968,13 @@ export default function GeneratorTab({ onStartWorkout, showToast, prefilledWorko
                           <button
                             type="button"
                             onClick={() => handleUpdateExerciseField(i, 'reps', Math.max(1, (ex.reps || 1) - 1))}
-                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-[#ededed] flex items-center justify-center font-bold text-xs cursor-pointer"
                           >-</button>
                           <span className="font-heading font-black text-sm text-white w-6 text-center">{ex.reps}</span>
                           <button
                             type="button"
                             onClick={() => handleUpdateExerciseField(i, 'reps', Math.min(50, (ex.reps || 1) + 1))}
-                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                            className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/15 text-[#ededed] flex items-center justify-center font-bold text-xs cursor-pointer"
                           >+</button>
                         </div>
 

@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src",
+    "lint": "next lint",
     "db:init": "node db/init.js"
   },
   "keywords": [

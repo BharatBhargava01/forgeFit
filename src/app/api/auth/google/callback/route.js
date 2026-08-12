@@ -4,20 +4,20 @@ import UsersModel from '@/models/users.model';
 import { signToken } from '@/utils/auth';
 
 export async function GET(request) {
+  const origin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://192.168.1.9:3000';
   
   if (error || !code) {
     console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(new URL('/?error=google_auth_failed', baseUrl));
+    return NextResponse.redirect(new URL('/?error=google_auth_failed', origin));
   }
   
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = new URL('/api/auth/google/callback', baseUrl).toString();
+    const redirectUri = `${origin}/api/auth/google/callback`;
     
     // 1. Exchange code for access token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -35,7 +35,7 @@ export async function GET(request) {
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error('Failed to exchange code for token:', errText);
-      return NextResponse.redirect(new URL('/?error=google_token_exchange_failed', baseUrl));
+      return NextResponse.redirect(new URL('/?error=google_token_exchange_failed', origin));
     }
     
     const tokenData = await tokenRes.json();
@@ -48,7 +48,7 @@ export async function GET(request) {
     
     if (!profileRes.ok) {
       console.error('Failed to fetch user info from Google');
-      return NextResponse.redirect(new URL('/?error=google_profile_fetch_failed', baseUrl));
+      return NextResponse.redirect(new URL('/?error=google_profile_fetch_failed', origin));
     }
     
     const profile = await profileRes.json();
@@ -58,7 +58,7 @@ export async function GET(request) {
     const avatarUrl = profile.picture;
     
     if (!email) {
-      return NextResponse.redirect(new URL('/?error=google_email_missing', baseUrl));
+      return NextResponse.redirect(new URL('/?error=google_email_missing', origin));
     }
     
     // 3. Find or create user
@@ -101,9 +101,9 @@ export async function GET(request) {
       path: '/',
     });
     
-    return NextResponse.redirect(new URL('/?login_success=true', baseUrl));
+    return NextResponse.redirect(new URL('/?login_success=true', origin));
   } catch (err) {
     console.error('Google callback error:', err);
-    return NextResponse.redirect(new URL('/?error=google_auth_exception', baseUrl));
+    return NextResponse.redirect(new URL('/?error=google_auth_exception', origin));
   }
 }

@@ -1222,7 +1222,7 @@ export default function ProfileTab({
                 {filteredWorkouts.map(w => (
                   <div
                     key={w.id}
-                    onClick={() => onInspectWorkout(w)}
+                    onClick={() => onInspectWorkout && onInspectWorkout(w)}
                     className="bg-[#12121a] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-sm text-white"
                   >
                     <div>
@@ -1239,7 +1239,7 @@ export default function ProfileTab({
                     </div>
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onStartWorkout(w); }}
+                        onClick={(e) => { e.stopPropagation(); onStartWorkout && onStartWorkout(w); }}
                         className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent-indigo to-accent-purple text-white text-xs font-bold shadow hover:opacity-90 flex items-center gap-1 cursor-pointer"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
@@ -1289,7 +1289,7 @@ export default function ProfileTab({
                 {savedRoutines.map(r => (
                   <div
                     key={r.id}
-                    onClick={() => onInspectRoutine(r)}
+                    onClick={() => onInspectRoutine && onInspectRoutine(r)}
                     className="bg-[#12121a] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-4 cursor-pointer group shadow-sm text-white"
                   >
                     <div>
@@ -1304,13 +1304,21 @@ export default function ProfileTab({
                         <span>Saved {formatDate(r.savedAt)}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => handleDeleteRoutine(r.id, e)}
-                      className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
-                      title="Delete Routine"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onInspectRoutine && onInspectRoutine(r); }}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent-indigo to-accent-purple text-white text-xs font-bold shadow hover:opacity-90 flex items-center gap-1 cursor-pointer"
+                      >
+                        Inspect
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteRoutine(r.id, e)}
+                        className="p-2 rounded-lg bg-[#161624] text-[#a0a0b8] hover:bg-accent-rose/10 hover:text-accent-rose border border-white/10 transition-colors cursor-pointer"
+                        title="Delete Routine"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
