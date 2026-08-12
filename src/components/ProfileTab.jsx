@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   User, Activity, Flame, Dumbbell, Save, Award, Scale, HelpCircle,
-  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X, Trophy, Target, Medal, Star, Lock, Unlock
+  Calendar, History, Play, Trash2, Clock, ChevronDown, ChevronUp, Plus, Settings, Search, Zap, CheckCircle, Edit3, X, Trophy, Target, Medal, Star, Lock, Unlock, RefreshCw
 } from 'lucide-react';
 import { generateBlueprint } from '@/lib/generator';
 import {
@@ -31,7 +31,8 @@ export default function ProfileTab({
   onSignOut,
   onDeleteAccount,
   themeSetting = 'light',
-  onChangeTheme
+  onChangeTheme,
+  onSyncData
 }) {
   const { gamification: gamificationContext, achievements: achievementsContext, levelProgress, syncFromWorkoutLogs } = useGamification();
 
@@ -2105,6 +2106,30 @@ export default function ProfileTab({
                     <div className="w-11 h-6 bg-gray-200 border border-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-accent-indigo peer-checked:to-accent-purple peer-checked:border-transparent transition-all duration-300 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:shadow-sm after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
                   </label>
                 </div>
+              </div>
+
+              {/* Offline Data & Cloud Sync */}
+              <div className="bg-[#12121a] rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col gap-4 hover:border-white/20 transition-colors animate-fade-in text-left">
+                <div className="flex gap-3 items-center">
+                  <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-accent-cyan text-xl shrink-0">
+                    <RefreshCw className="w-5 h-5 text-accent-cyan" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-heading font-bold text-white text-sm">Offline Data & Cloud Sync</h4>
+                    <p className="text-[11px] text-[#a0a0b8] mt-0.5 leading-normal font-semibold">
+                      Sync local offline workouts, routines, custom exercises, and logs to your cloud database.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onSyncData}
+                  className="w-full py-3 px-4 rounded-xl bg-accent-cyan/10 hover:bg-accent-cyan/20 border border-accent-cyan/30 text-accent-cyan font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className="w-4 h-4 text-accent-cyan" />
+                  <span>Sync Local Data Now</span>
+                </button>
               </div>
 
               {/* Account Management Card */}

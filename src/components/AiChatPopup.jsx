@@ -192,11 +192,11 @@ export default function AiChatPopup({ user, showToast }) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-accent-indigo to-accent-purple text-white shadow-xl shadow-accent-purple/25 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-accent-purple/40"
+          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-accent-indigo to-accent-purple text-white shadow-xl shadow-accent-purple/25 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-accent-purple/40"
           title="Open AI Fitness Coach"
         >
           <div className="relative">
-            <MessageSquare className="w-6 h-6 text-white" />
+            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-cyan opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-accent-cyan"></span>
@@ -207,7 +207,7 @@ export default function AiChatPopup({ user, showToast }) {
 
       {/* Chat Popup Widget */}
       {isOpen && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] h-[550px] max-h-[calc(100vh-100px)] bg-bg-card rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col animate-slide-up">
+        <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] h-[550px] max-h-[calc(100vh-120px)] bg-bg-card rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col animate-slide-up">
           
           {/* Header Panel */}
           <div className="px-5 py-4 border-b border-white/10 bg-bg-card flex items-center justify-between shrink-0">

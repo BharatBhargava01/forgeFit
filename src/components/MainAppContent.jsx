@@ -17,6 +17,7 @@ import { setCustomExercisesCache } from '@/lib/data';
 import { getCustomExercises, syncOfflineData } from '@/lib/storage';
 import { useGamification } from '@/context/GamificationContext';
 import SidebarProfile from '@/components/SidebarProfile';
+import BottomNav from '@/components/BottomNav';
 
 export default function MainAppContent({ user, setUser, currentPage, setCurrentPage, activeWorkout, setActiveWorkout, themeSetting, setThemeSetting, systemTheme }) {
   const { gamification } = useGamification();
@@ -25,7 +26,6 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
   const [motivationHours, setMotivationHours] = useState([8, 12, 15, 18, 21]);
   const [mealRemindersEnabled, setMealRemindersEnabled] = useState(false);
   
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('Today');
@@ -672,7 +672,7 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
           <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-3 justify-center' : 'justify-between px-2'}`}>
             <div 
               className="flex items-center gap-3 cursor-pointer" 
-              onClick={() => { setCurrentPage(user ? 'dashboard' : 'home'); setMobileSidebarOpen(false); }}
+              onClick={() => setCurrentPage(user ? 'dashboard' : 'home')}
             >
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-lg shrink-0 transition-transform hover:scale-105">
                 <Flame className="w-5.5 h-5.5 fill-white text-white" />
@@ -777,97 +777,6 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
 
       </aside>
 
-      {/* Mobile Drawer Sidebar Menu Overlay */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden animate-fade-in">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
-          
-          <aside className="relative flex flex-col w-72 bg-[#0a0a0f] text-[#a0a0b8] p-6 h-full z-10 select-none justify-between">
-            <div className="space-y-6">
-              <button 
-                onClick={() => setMobileSidebarOpen(false)}
-                className="absolute right-4 top-4 p-1 rounded-xl hover:bg-white/5 text-[#a0a0b8] hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3 px-2 cursor-pointer" onClick={() => { setCurrentPage(user ? 'dashboard' : 'home'); setMobileSidebarOpen(false); }}>
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-lg shrink-0">
-                  <Flame className="w-5.5 h-5.5 fill-white text-white" />
-                </div>
-                <span className="font-heading font-extrabold text-xl tracking-tight text-white select-none animate-fade-in">
-                  ForgeFit
-                </span>
-              </div>
-
-              <nav className="space-y-1">
-                {sidebarLinks.map((link) => {
-                  const isActive = currentPage === link.id;
-                  const IconComp = link.icon;
-                  return (
-                    <button
-                      key={link.id}
-                      onClick={() => {
-                        setCurrentPage(link.id);
-                        setMobileSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-black tracking-wide transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-white text-[#1e1f22] shadow-md font-bold'
-                          : 'text-[#a0a0b8] hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <IconComp className={`w-4.5 h-4.5 ${isActive ? 'text-[#1e1f22]' : 'text-[#a0a0b8]'}`} />
-                        <span>{link.label}</span>
-                      </div>
-                      {link.badge && (
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${isActive ? 'bg-[#d6fa46] text-[#1e1f22]' : 'bg-[#d6fa46]/20 text-[#d6fa46]'}`}>
-                          {link.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Bottom section of Mobile Sidebar */}
-            {user && (
-              <div className="pt-4 border-t border-accent-purple/10 space-y-1.5">
-                {/* Sync Local Data Button */}
-                <button
-                  onClick={() => {
-                    handleSyncData();
-                    setMobileSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black tracking-wide text-accent-cyan hover:bg-accent-cyan/10 transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <RefreshCw className="w-4.5 h-4.5 text-accent-cyan" />
-                    <span>Sync Local Data</span>
-                  </div>
-                </button>
-
-                {/* Sign Out Button */}
-                <button
-                  onClick={() => {
-                    handleSignOut();
-                    setMobileSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black tracking-wide text-[#ff5c5c] hover:bg-[#ff5c5c]/10 transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <LogOut className="w-4.5 h-4.5 text-[#ff5c5c]" />
-                    <span>Sign Out</span>
-                  </div>
-                </button>
-              </div>
-            )}
-          </aside>
-        </div>
-      )}
-
       {/* Main Container Right Side */}
       <div className="flex-grow flex flex-col min-h-screen relative overflow-hidden lg:p-3 pb-[100px] lg:pb-0">
         
@@ -877,6 +786,19 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
           {/* Top Header Panel */}
           <header className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2.5 flex items-center justify-between gap-2 sm:gap-4 border-b border-black/[0.02]">
             
+            {/* Mobile Brand Logo */}
+            <div 
+              className="lg:hidden flex items-center gap-2.5 cursor-pointer select-none order-1 shrink-0"
+              onClick={() => setCurrentPage(user ? 'dashboard' : 'home')}
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-indigo to-accent-purple flex items-center justify-center text-white shadow-md shrink-0">
+                <Flame className="w-5 h-5 fill-white text-white" />
+              </div>
+              <span className={`font-heading font-extrabold text-lg tracking-tight ${resolvedTheme === 'light' ? 'text-[#1e1f22]' : 'text-white'}`}>
+                ForgeFit
+              </span>
+            </div>
+
             {/* User Profile Widget */}
             <div className="relative order-3 lg:order-1">
 
@@ -919,13 +841,7 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
               </div>
             </div>
 
-            {/* Mobile Hamburger menu toggle */}
-            <button
-              onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-[#1e1f22] cursor-pointer shrink-0 order-1 lg:order-2"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+
 
             {/* Right Header: Notification & Date (only shown on dashboard) */}
             {currentPage === 'dashboard' && (
@@ -1283,6 +1199,7 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
                 onToggleHour={handleToggleHour}
                 mealRemindersEnabled={mealRemindersEnabled}
                 onToggleMealReminders={handleToggleMealReminders}
+                onSyncData={handleSyncData}
               />
             )}
 
@@ -1291,7 +1208,7 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
       </div>
 
       {/* Toast Notifications */}
-      <div className="fixed bottom-6 right-6 z-[9997] flex flex-col gap-2 lg:bottom-6 lg:right-6 pointer-events-none">
+      <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[9997] flex flex-col gap-2 pointer-events-none">
         {toasts.map(toast => {
           const typeCls = toast.type === 'error'
             ? 'bg-accent-rose border-accent-rose'
@@ -1338,6 +1255,17 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
 
       {/* Persistent Floating AI Chat Coach */}
       {user && <AiChatPopup user={user} showToast={showToast} />}
+
+      {/* Mobile Bottom Navigation Bar */}
+      <BottomNav
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        user={user}
+        activeWorkout={activeWorkout}
+        savedSession={savedSession}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        resolvedTheme={resolvedTheme}
+      />
     </div>
   );
 }
