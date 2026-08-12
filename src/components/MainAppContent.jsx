@@ -18,6 +18,7 @@ import { getCustomExercises, syncOfflineData } from '@/lib/storage';
 import { useGamification } from '@/context/GamificationContext';
 import SidebarProfile from '@/components/SidebarProfile';
 import BottomNav from '@/components/BottomNav';
+import ExitWorkoutModal from '@/components/ExitWorkoutModal';
 
 export default function MainAppContent({ user, setUser, currentPage, setCurrentPage, activeWorkout, setActiveWorkout, themeSetting, setThemeSetting, systemTheme }) {
   const { gamification } = useGamification();
@@ -79,6 +80,10 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [exitWorkoutModalOpen, setExitWorkoutModalOpen] = useState(false);
+
+  const isNavigatingViaPopStateRef = React.useRef(false);
+  const lastBackTapTimeRef = React.useRef(0);
 
   const showToast = (message, type = 'success') => {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -164,6 +169,82 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
       document.body.style.overflow = '';
     };
   }, [authModalOpen, wizardOpen]);
+
+  // Push state to browser history when currentPage or activeWorkout changes for PWA back gesture/button support
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (isNavigatingViaPopStateRef.current) {
+      isNavigatingViaPopStateRef.current = false;
+      return;
+    }
+
+    const state = window.history.state;
+    if (!state || state.page !== currentPage || state.hasWorkout !== !!activeWorkout) {
+      window.history.pushState(
+        { page: currentPage, hasWorkout: !!activeWorkout, time: Date.now() },
+        '',
+        window.location.pathname + '#' + currentPage
+      );
+    }
+  }, [currentPage, activeWorkout]);
+
+  // Intercept PWA mobile back arrow gesture/button via popstate
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = (event) => {
+      // 1. If Exit Workout confirmation modal is open, close modal and stay on tracker
+      if (exitWorkoutModalOpen) {
+        setExitWorkoutModalOpen(false);
+        window.history.pushState({ page: 'tracker', hasWorkout: true }, '', window.location.pathname + '#tracker');
+        return;
+      }
+
+      // 2. Active Workout Interception: If user is actively working out
+      if (activeWorkout) {
+        // Prevent instant tab loss, push state back to keep session intact
+        window.history.pushState({ page: currentPage, hasWorkout: true }, '', window.location.pathname + '#' + currentPage);
+        setExitWorkoutModalOpen(true);
+        return;
+      }
+
+      // 3. Close open Auth/Wizard modal if active
+      if (authModalOpen) {
+        setAuthModalOpen(false);
+        return;
+      }
+      if (wizardOpen) {
+        setWizardOpen(false);
+        return;
+      }
+
+      // 4. Double-tap back exit protection on root screen
+      const rootPage = user ? 'dashboard' : 'home';
+      const isAtRoot = currentPage === rootPage;
+
+      if (isAtRoot) {
+        const now = Date.now();
+        if (now - lastBackTapTimeRef.current < 2000) {
+          // Double back tap within 2 seconds: Allow PWA exit
+          return;
+        } else {
+          lastBackTapTimeRef.current = now;
+          window.history.pushState({ page: rootPage, hasWorkout: false }, '', window.location.pathname + '#' + rootPage);
+          showToast('Press back again to exit ForgeFit 🏋️‍♂️', 'info');
+          return;
+        }
+      }
+
+      // 5. Standard Tab Back Navigation
+      const targetPage = event.state?.page || rootPage;
+      isNavigatingViaPopStateRef.current = true;
+      setCurrentPage(targetPage);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeWorkout, currentPage, exitWorkoutModalOpen, authModalOpen, wizardOpen, user]);
 
   const clearUserCaches = () => {
     localStorage.removeItem('wg_workouts_cache');
@@ -627,10 +708,29 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
 
   const handleCancelWorkout = () => {
     setActiveWorkout(null);
-    setCurrentPage('home');
+    setCurrentPage(user ? 'dashboard' : 'home');
     showToast('Session cancelled', 'info');
     localStorage.removeItem('wg_active_session');
     setSavedSession(null);
+  };
+
+  const handleResumeWorkoutFromModal = () => {
+    setExitWorkoutModalOpen(false);
+    if (currentPage !== 'tracker') {
+      setCurrentPage('tracker');
+    }
+  };
+
+  const handleMinimizeWorkoutFromModal = () => {
+    setExitWorkoutModalOpen(false);
+    const fallbackPage = user ? 'dashboard' : 'home';
+    setCurrentPage(fallbackPage);
+    showToast('Workout running in background. Tap the pill below to resume anytime! ⚡', 'info');
+  };
+
+  const handleDiscardWorkoutFromModal = () => {
+    setExitWorkoutModalOpen(false);
+    handleCancelWorkout();
   };
 
   const handleResumeSavedSession = () => {
@@ -1251,6 +1351,16 @@ export default function MainAppContent({ user, setUser, currentPage, setCurrentP
         onSaveSuccess={(userData) => setUser(userData)}
         showToast={showToast}
         user={user}
+      />
+
+      {/* Exit Workout Confirmation Modal */}
+      <ExitWorkoutModal
+        isOpen={exitWorkoutModalOpen}
+        onResume={handleResumeWorkoutFromModal}
+        onMinimize={handleMinimizeWorkoutFromModal}
+        onDiscard={handleDiscardWorkoutFromModal}
+        workoutName={activeWorkout?.name}
+        resolvedTheme={resolvedTheme}
       />
 
       {/* Persistent Floating AI Chat Coach */}
