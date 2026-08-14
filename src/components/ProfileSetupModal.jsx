@@ -426,7 +426,7 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
       />
       
       {/* Modal Card */}
-      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c12]/95 p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-scale-up text-white z-10">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c12]/95 p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-scale-up text-[#ededed] z-10">
         
         {/* Decorative background glows */}
         <div className="absolute -right-24 -top-24 -z-10 h-64 w-64 rounded-full bg-accent-purple/20 blur-3xl" />
@@ -582,8 +582,8 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
                       >
                         <span className="text-xl shrink-0">{g.emoji}</span>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-white block">{g.label}</span>
-                          <span className="text-[10px] text-text-secondary truncate block">{g.desc}</span>
+                          <span className="text-xs font-bold text-[#ededed] block">{g.label}</span>
+                          <span className="text-[10px] text-[#949494] truncate block">{g.desc}</span>
                         </div>
                       </button>
                     );
@@ -612,8 +612,8 @@ export default function ProfileSetupModal({ isOpen, onClose, onSaveSuccess, show
                         }`}
                       >
                         <span className="text-lg">{l.emoji}</span>
-                        <span className="text-xs font-bold text-white">{l.label}</span>
-                        <span className="text-[9px] text-text-muted leading-tight">{l.desc}</span>
+                        <span className="text-xs font-bold text-[#ededed]">{l.label}</span>
+                        <span className="text-[9px] text-[#949494] leading-tight">{l.desc}</span>
                       </button>
                     );
                   })}
